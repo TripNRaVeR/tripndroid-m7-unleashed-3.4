@@ -871,22 +871,22 @@ static void __queue_work(unsigned int cpu, struct workqueue_struct *wq,
 	spin_unlock_irqrestore(&gcwq->lock, flags);
 }
 
-int
-queue_work_on(int cpu, struct workqueue_struct *wq, struct work_struct *work)
+bool queue_work_on(int cpu, struct workqueue_struct *wq,
+	   struct work_struct *work)
 {
-	int ret = 0;
+	bool ret = false;
 
 	if (!test_and_set_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(work))) {
 		__queue_work(cpu, wq, work);
-		ret = 1;
+		ret = true;
 	}
 	return ret;
 }
 EXPORT_SYMBOL_GPL(queue_work_on);
 
-int queue_work(struct workqueue_struct *wq, struct work_struct *work)
- {
-	int ret;
+bool queue_work(struct workqueue_struct *wq, struct work_struct *work)
+{
+	bool ret;
  
 	ret = queue_work_on(get_cpu(), wq, work);
 	put_cpu();
@@ -903,12 +903,12 @@ static void delayed_work_timer_fn(unsigned long __data)
 	__queue_work(smp_processor_id(), cwq->wq, &dwork->work);
 }
 
-int queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
-			struct delayed_work *dwork, unsigned long delay)
+bool queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
+		   	struct delayed_work *dwork, unsigned long delay)
 {
-	int ret = 0;
 	struct timer_list *timer = &dwork->timer;
 	struct work_struct *work = &dwork->work;
+	bool ret = false;
 
 	if (!test_and_set_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(work))) {
 		unsigned int lcpu;
@@ -938,7 +938,7 @@ int queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
 			add_timer_on(timer, cpu);
 		else
 			add_timer(timer);
-		ret = 1;
+		ret = true;
 	}
 	return ret;
 }
@@ -950,9 +950,9 @@ EXPORT_SYMBOL_GPL(queue_delayed_work_on);
  * @dwork: delayable work to queue
  * @delay: number of jiffies to wait before queueing
  *
- * Returns 0 if @work was already on a queue, non-zero otherwise.
+ * Returns %false if @work was already on a queue, %true otherwise.
  */
-int queue_delayed_work(struct workqueue_struct *wq,
+bool queue_delayed_work(struct workqueue_struct *wq,
 			struct delayed_work *dwork, unsigned long delay)
 {
 	if (delay == 0)
@@ -1306,8 +1306,8 @@ restart:
  * After waiting for a given time this puts a job in the kernel-global
  * workqueue on the specified CPU.
  */
-int schedule_delayed_work_on(int cpu,
-		struct delayed_work *dwork, unsigned long delay)
+bool schedule_delayed_work_on(int cpu, struct delayed_work *dwork,
+			      unsigned long delay)
 {
 	return queue_delayed_work_on(cpu, system_wq, dwork, delay);
 }
@@ -2057,20 +2057,26 @@ bool cancel_delayed_work_sync(struct delayed_work *dwork)
 }
 EXPORT_SYMBOL(cancel_delayed_work_sync);
 
-int schedule_work(struct work_struct *work)
+bool schedule_work(struct work_struct *work)
 {
 	return queue_work(system_wq, work);
 }
 EXPORT_SYMBOL(schedule_work);
 
-int schedule_work_on(int cpu, struct work_struct *work)
+/**
+ * schedule_work_on - put work task on a specific cpu
+ * @cpu: cpu to put the work task on
+ * @work: job to be done
+ *
+ * This puts a job on a specific cpu
+ */
+bool schedule_work_on(int cpu, struct work_struct *work)
 {
 	return queue_work_on(cpu, system_wq, work);
 }
 EXPORT_SYMBOL(schedule_work_on);
 
-int schedule_delayed_work(struct delayed_work *dwork,
-					unsigned long delay)
+bool schedule_delayed_work(struct delayed_work *dwork, unsigned long delay)
 {
 	return queue_delayed_work(system_wq, dwork, delay);
 }
