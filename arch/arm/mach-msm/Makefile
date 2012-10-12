@@ -227,6 +227,8 @@ ifdef CONFIG_BT
 	obj-$(CONFIG_MACH_M7_UL) += board-m7-rfkill.o  htc_bdaddress.o htc_4335_wl_reg.o
 endif
 
+obj-$(CONFIG_MSM_USE_USER_ACCESSIBLE_TIMERS) += timer_page.o
+
 #ifdef CONFIG_MSM_CAMERA_V4L2
 #	obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-camera.o
 #endif
