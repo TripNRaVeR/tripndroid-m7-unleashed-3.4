@@ -85,6 +85,11 @@ struct nf_conn_help {
 #include <net/netfilter/ipv4/nf_conntrack_ipv4.h>
 #include <net/netfilter/ipv6/nf_conntrack_ipv6.h>
 
+/* Handle NATTYPE Stuff,only if NATTYPE module was defined */
+#if defined(CONFIG_IP_NF_TARGET_NATTYPE_MODULE)
+#include <linux/netfilter_ipv4/ipt_NATTYPE.h>
+#endif
+
 struct nf_conn {
 	struct nf_conntrack ct_general;
 
@@ -117,6 +122,9 @@ struct nf_conn {
 	struct net *ct_net;
 #endif
 
+#if defined(CONFIG_IP_NF_TARGET_NATTYPE_MODULE)
+	unsigned long nattype_entry;
+#endif
 	
 	union nf_conntrack_proto proto;
 };
