@@ -1617,6 +1617,13 @@ void warn_alloc_failed(gfp_t gfp_mask, int order, const char *fmt, ...)
 	    debug_guardpage_minorder() > 0)
 		return;
 
+ 	/*
+	 * Walking all memory to count page types is very expensive and should
+	 * be inhibited in non-blockable contexts.
+	 */
+	if (!(gfp_mask & __GFP_WAIT))
+		filter |= SHOW_MEM_FILTER_PAGE_COUNT;
+
 	if (!(gfp_mask & __GFP_NOMEMALLOC))
 		if (test_thread_flag(TIF_MEMDIE) ||
 		    (current->flags & (PF_MEMALLOC | PF_EXITING)))
