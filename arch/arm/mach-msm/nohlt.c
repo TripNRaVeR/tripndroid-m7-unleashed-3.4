@@ -25,11 +25,18 @@ static int set_nohalt(void *data, u64 val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(nohalt_ops, NULL, set_nohalt, "%llu\n");
+static int get_nohalt(void *data, u64 *val)
+{
+	*val = (unsigned int)get_hlt();
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(nohalt_ops, get_nohalt, set_nohalt, "%llu\n");
 
 static int __init init_hlt_debug(void)
 {
-	debugfs_create_file("nohlt", 0200, NULL, NULL, &nohalt_ops);
+	debugfs_create_file("nohlt", 0600, NULL, NULL, &nohalt_ops);
 
 	return 0;
 }
