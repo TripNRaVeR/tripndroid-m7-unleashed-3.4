@@ -63,6 +63,8 @@
 #define NUM_CODEC_DAIS 2
 #define SLIM_CLOSE_TIMEOUT 1000
 
+#define SITAR_MUX_SWITCH_READY_WAIT_MS 50
+
 struct sitar_codec_dai_data {
 	u32 rate;
 	u32 *ch_num;
@@ -3635,7 +3637,11 @@ void sitar_mbhc_cal(struct snd_soc_codec *codec)
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_EN_CTL, 0x04);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_CLK_CTL, 0x02);
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x81);
-	usleep_range(100, 100);
+	/*
+	* Hardware that has external cap can delay mic bias ramping down up
+	* to 50ms.
+	*/
+	msleep(SITAR_MUX_SWITCH_READY_WAIT_MS);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_EN_CTL, 0x04);
 	usleep_range(sitar->mbhc_data.t_dce, sitar->mbhc_data.t_dce);
 	sitar->mbhc_data.dce_z = sitar_codec_read_dce_result(codec);
@@ -3644,7 +3650,11 @@ void sitar_mbhc_cal(struct snd_soc_codec *codec)
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_CLK_CTL, 0x0A);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_CLK_CTL, 0x02);
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x82);
-	usleep_range(100, 100);
+	/*
+	* Hardware that has external cap can delay mic bias ramping down up
+	* to 50ms.
+	*/
+	msleep(SITAR_MUX_SWITCH_READY_WAIT_MS);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_EN_CTL, 0x04);
 	usleep_range(sitar->mbhc_data.t_dce, sitar->mbhc_data.t_dce);
 	sitar->mbhc_data.dce_mb = sitar_codec_read_dce_result(codec);
@@ -3654,14 +3664,22 @@ void sitar_mbhc_cal(struct snd_soc_codec *codec)
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_EN_CTL, 0x02);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_CLK_CTL, 0x02);
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x81);
-	usleep_range(100, 100);
+	/*
+	* Hardware that has external cap can delay mic bias ramping down up
+	* to 50ms.
+	*/
+	msleep(SITAR_MUX_SWITCH_READY_WAIT_MS);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_EN_CTL, 0x02);
 	usleep_range(sitar->mbhc_data.t_sta, sitar->mbhc_data.t_sta);
 	sitar->mbhc_data.sta_z = sitar_codec_read_sta_result(codec);
 
 	
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x82);
-	usleep_range(100, 100);
+	/*
+	* Hardware that has external cap can delay mic bias ramping down up
+	* to 50ms.
+	*/
+	msleep(SITAR_MUX_SWITCH_READY_WAIT_MS);
 	snd_soc_write(codec, SITAR_A_CDC_MBHC_EN_CTL, 0x02);
 	usleep_range(sitar->mbhc_data.t_sta, sitar->mbhc_data.t_sta);
 	sitar->mbhc_data.sta_mb = sitar_codec_read_sta_result(codec);
@@ -3674,7 +3692,6 @@ void sitar_mbhc_cal(struct snd_soc_codec *codec)
 
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x84);
 	usleep_range(100, 100);
-
 	wcd9xxx_enable_irq(codec->control_data, SITAR_IRQ_MBHC_POTENTIAL);
 	sitar_turn_onoff_rel_detection(codec, true);
 }
