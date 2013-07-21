@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -505,6 +505,8 @@ u32 ddl_get_yuv_buf_size(u32 width, u32 height, u32 format)
 
 	width_round_up  = width;
 	height_round_up = height;
+	align = SZ_4K;
+
 	if (format == DDL_YUV_BUF_TYPE_TILE) {
 		width_round_up  = DDL_ALIGN(width, DDL_TILE_ALIGN_WIDTH);
 		height_round_up = DDL_ALIGN(height, DDL_TILE_ALIGN_HEIGHT);
@@ -780,7 +782,7 @@ u32 ddl_allocate_dec_hw_buffers(struct ddl_client_context *ddl)
 		}
 	}
 	if (buf_size.sz_extnuserdata > 0) {
-		dec_bufs->extnuserdata.mem_type = DDL_FW_MEM;
+		dec_bufs->extnuserdata.mem_type = DDL_CMD_MEM;
 		ptr = ddl_pmem_alloc(&dec_bufs->extnuserdata,
 				buf_size.sz_extnuserdata, DDL_KILO_BYTE(2));
 		if (!ptr)

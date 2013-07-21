@@ -84,6 +84,7 @@ struct msm_fb_data_type {
 
 	struct device *dev;
 	boolean op_enable;
+	struct delayed_work backlight_worker;
 	uint32 fb_imgType;
 	boolean sw_currently_refreshing;
 	boolean sw_refreshing_enable;
@@ -213,6 +214,17 @@ struct msm_fb_data_type {
 	void *msm_fb_backup;
 	boolean panel_driver_on;
 	int vsync_sysfs_created;
+	void *copy_splash_buf;
+	unsigned char *copy_splash_phys;
+	uint32 sec_mapped;
+	uint32 sec_active;
+
+	struct workqueue_struct *dimming_wq;
+	struct work_struct dimming_work;
+	struct timer_list dimming_update_timer;
+	struct workqueue_struct *sre_wq;
+        struct work_struct sre_work;
+        struct timer_list sre_update_timer;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
