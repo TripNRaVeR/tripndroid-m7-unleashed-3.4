@@ -116,61 +116,6 @@ static void htc_hsic_dump_system_busy_info(void)
     htc_kernel_top();
 }
 
-void htc_hsic_wakeup_check(unsigned long long timestamp)
-{
-	static unsigned long long last_hsic_wakeup_check = 0;
-	static unsigned long long last_hsic_suspend_check = 0;
-	static unsigned int hsic_wakeup_check_count = HSIC_WAKEUP_CHECK_MIN_THRESHOLD;
-	static unsigned int hsic_suspend_check_count = HSIC_WAKEUP_CHECK_MIN_THRESHOLD;
-
-	if (!(get_radio_flag() & 0x0008))
-		return;
-
-	if (mdm_usb1_1_dev) {
-		if (mdm_usb1_1_dev->power.runtime_status != RPM_ACTIVE) {
-			if (msm_hsic_wakeup_irq_timestamp) {
-				if (timestamp - msm_hsic_wakeup_irq_timestamp > (unsigned long long)NSEC_HSIC_WAKEUP_CHECK_THRESHOLD) {
-					if (timestamp - last_hsic_wakeup_check > (unsigned long long)NSEC_PER_SEC) {
-						if (hsic_wakeup_check_count <= HSIC_WAKEUP_CHECK_MAX_THRESHOLD) {
-							pr_info("\n%s: HSIC remote wakeup was blocked for more than %d seconds!\n",
-								__func__, hsic_wakeup_check_count++);
-
-							htc_hsic_dump_system_busy_info();
-						}
-						last_hsic_wakeup_check = sched_clock();
-					}
-				}
-			}
-		}
-		else {
-			
-			if (hsic_wakeup_check_count != HSIC_WAKEUP_CHECK_MIN_THRESHOLD) {
-				pr_info("%s: remote wakeup complete\n", __func__);
-			}
-			msm_hsic_wakeup_irq_timestamp = 0;
-			hsic_wakeup_check_count	= HSIC_WAKEUP_CHECK_MIN_THRESHOLD;
-		}
-	}
-
-    if (msm_hsic_suspend_timestamp != 0) {
-        if (timestamp - msm_hsic_suspend_timestamp > (unsigned long long)NSEC_HSIC_WAKEUP_CHECK_THRESHOLD) {
-            if (timestamp - last_hsic_suspend_check > (unsigned long long)NSEC_PER_SEC) {
-                if (hsic_suspend_check_count <= HSIC_WAKEUP_CHECK_MAX_THRESHOLD) {
-                    pr_info("\n%s: HSIC remote suspend was blocked for more than %d seconds!\n",
-                        __func__, hsic_suspend_check_count++);
-
-                    htc_hsic_dump_system_busy_info();
-                }
-                last_hsic_suspend_check = sched_clock();
-            }
-        }
-    }
-    else {
-        hsic_suspend_check_count = HSIC_WAKEUP_CHECK_MIN_THRESHOLD;
-    }
-}
-EXPORT_SYMBOL(htc_hsic_wakeup_check);
-
 struct msm_hsic_hcd {
 	struct ehci_hcd		ehci;
 	spinlock_t              wakeup_lock;
