@@ -3,7 +3,7 @@
  * MSM architecture cpufreq driver
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2012, The Linux Foundation. All rights reserved.
  * Author: Mike A. Chan <mikechan@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -29,12 +29,8 @@
 #include <linux/suspend.h>
 #include <mach/socinfo.h>
 #include <mach/cpufreq.h>
-#include <mach/board.h>
 
 #include "acpuclock.h"
-#ifdef CONFIG_PERFLOCK
-#include <mach/perflock.h>
-#endif
 
 struct cpufreq_work_struct {
 	struct work_struct work;
@@ -64,75 +60,32 @@ struct cpu_freq {
 
 static DEFINE_PER_CPU(struct cpu_freq, cpu_freq_info);
 
-static int override_cpu;
-
 static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq)
 {
 	int ret = 0;
-#ifdef CONFIG_PERFLOCK
-	int perf_freq = 0;
-#endif
-	int saved_sched_policy = -EINVAL;
-	int saved_sched_rt_prio = -EINVAL;
 	struct cpufreq_freqs freqs;
 	struct cpu_freq *limit = &per_cpu(cpu_freq_info, policy->cpu);
-	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
-
-	freqs.old = policy->cur;
-#ifdef CONFIG_PERFLOCK
-	perf_freq = perflock_override(policy, new_freq);
-	if (perf_freq) {
-		if (policy->cur == perf_freq)
-			return 0;
-		else
-			freqs.new = perf_freq;
-	} else if (override_cpu) {
-#else
-	if (override_cpu) {
-#endif
-		if (policy->cur == policy->max)
-			return 0;
-		else
-			freqs.new = policy->max;
-	} else
-		freqs.new = new_freq;
 
 	if (limit->limits_init) {
-		if (freqs.new > limit->allowed_max) {
-			freqs.new = limit->allowed_max;
+		if (new_freq > limit->allowed_max) {
+			new_freq = limit->allowed_max;
 			pr_debug("max: limiting freq to %d\n", new_freq);
 		}
 
-		if (freqs.new < limit->allowed_min) {
-			freqs.new = limit->allowed_min;
+		if (new_freq < limit->allowed_min) {
+			new_freq = limit->allowed_min;
 			pr_debug("min: limiting freq to %d\n", new_freq);
 		}
 	}
 
+	freqs.old = policy->cur;
+	freqs.new = new_freq;
 	freqs.cpu = policy->cpu;
-
-	/*
-	 * Put the caller into SCHED_FIFO priority to avoid cpu starvation
-	 * in the acpuclk_set_rate path while increasing frequencies
-	 */
-
-	if (freqs.new > freqs.old && current->policy != SCHED_FIFO) {
-		saved_sched_policy = current->policy;
-		saved_sched_rt_prio = current->rt_priority;
-		sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
-	}
-
 	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
-
-	ret = acpuclk_set_rate(policy->cpu, freqs.new, SETRATE_CPUFREQ);
+	ret = acpuclk_set_rate(policy->cpu, new_freq, SETRATE_CPUFREQ);
 	if (!ret)
 		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
-	/* Restore priority after clock ramp-up */
-	if (freqs.new > freqs.old && saved_sched_policy >= 0) {
-		param.sched_priority = saved_sched_rt_prio;
-		sched_setscheduler_nocheck(current, saved_sched_policy, &param);
-	}
 	return ret;
 }
 
@@ -293,6 +246,11 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	table = cpufreq_frequency_get_table(policy->cpu);
 	if (table == NULL)
 		return -ENODEV;
+	/*
+	 * In 8625 both cpu core's frequency can not
+	 * be changed independently. Each cpu is bound to
+	 * same frequency. Hence set the cpumask to all cpu.
+	 */
 	if (cpu_is_msm8625())
 		cpumask_setall(policy->cpus);
 
@@ -305,13 +263,6 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
 	policy->min = CONFIG_MSM_CPU_FREQ_MIN;
 	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
-#endif
-
-#ifdef CONFIG_ARCH_APQ8064
-	if( board_mfg_mode() == 5) {
-		policy->cpuinfo.max_freq = 918000;
-		policy->max = 918000;
-	}
 #endif
 
 	cur_freq = acpuclk_get_rate(policy->cpu);
@@ -410,7 +361,7 @@ static struct freq_attr *msm_freq_attr[] = {
 };
 
 static struct cpufreq_driver msm_cpufreq_driver = {
-	
+	/* lps calculations are handled here. */
 	.flags		= CPUFREQ_STICKY | CPUFREQ_CONST_LOOPS,
 	.init		= msm_cpufreq_init,
 	.verify		= msm_cpufreq_verify,
