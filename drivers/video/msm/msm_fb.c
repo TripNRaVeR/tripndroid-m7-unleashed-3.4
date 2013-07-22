@@ -723,6 +723,10 @@ static int msm_fb_probe(struct platform_device *pdev)
 
 	vsync_cntrl.dev = mfd->fbi->dev;
 	mfd->panel_info.frame_count = 0;
+
+	mfd->width = mfd->panel_info.width;
+	mfd->height = mfd->panel_info.height;
+
 	mfd->bl_level = 0;
 	bl_scale = 1024;
 	bl_min_lvl = 255;
@@ -1361,10 +1365,10 @@ int calc_fb_offset(struct msm_fb_data_type *mfd, struct fb_info *fbi, int bpp)
 	int remainder, yres, offset;
 
 	if (panel_info->mode2_yres != 0) {
-		yres = panel_info->mode2_yres;
+		yres = mfd->ovr_src_height;
 		remainder = (fbi->fix.line_length*yres) & (PAGE_SIZE - 1);
 	} else {
-		yres = panel_info->yres;
+		yres = mfd->ovr_src_height;
 		remainder = (fbi->fix.line_length*yres) & (PAGE_SIZE - 1);
 	}
 
@@ -1574,6 +1578,33 @@ static __u32 msm_fb_line_length(__u32 fb_index, __u32 xres, int bpp)
 		return xres * bpp;
 }
 
+static void msm_fb_resolution_override(struct msm_fb_data_type *mfd)
+{
+	struct msm_panel_info *panel_info = &mfd->panel_info;
+
+	
+	if (mfd->index == 0) {
+#ifdef CONFIG_FB_MSM_RESOLUTION_OVERRIDE
+		mfd->ovr_src_height = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_SRC_HEIGHT;
+		mfd->ovr_src_width = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_SRC_WIDTH;
+		mfd->ovr_dst_height = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_DST_HEIGHT;
+		mfd->ovr_dst_width = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_DST_WIDTH;
+#else
+		mfd->ovr_src_height = panel_info->yres;
+		mfd->ovr_src_width = panel_info->xres;
+		mfd->ovr_dst_height = panel_info->yres;
+		mfd->ovr_dst_width = panel_info->xres;
+#endif
+	} else {
+		mfd->ovr_src_height = panel_info->yres;
+		mfd->ovr_src_width = panel_info->xres;
+		mfd->ovr_dst_height = panel_info->yres;
+		mfd->ovr_dst_width = panel_info->xres;
+	}
+
+	return;
+}
+
 static int msm_fb_register(struct msm_fb_data_type *mfd)
 {
 	int ret = -ENODEV;
@@ -1592,6 +1623,8 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	fix = &fbi->fix;
 	var = &fbi->var;
 
+	msm_fb_resolution_override(mfd);
+
 	fix->type_aux = 0;	/* if type == FB_TYPE_INTERLEAVED_PLANES */
 	fix->visual = FB_VISUAL_TRUECOLOR;	/* True Color */
 	fix->ywrapstep = 0;	/* No support */
@@ -1604,8 +1637,8 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->grayscale = 0,	/* No graylevels */
 	var->nonstd = 0,	/* standard pixel format */
 	var->activate = FB_ACTIVATE_VBL,	/* activate it at vsync */
-	var->height = -1,	/* height of picture in mm */
-	var->width = -1,	/* width of picture in mm */
+	var->height = mfd->height,	/* height of picture in mm */
+	var->width = mfd->width,	/* width of picture in mm */
 	var->accel_flags = 0,	/* acceleration flags */
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
@@ -1719,14 +1752,14 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 
 	fix->type = panel_info->is_3d_panel;
 
-	fix->line_length = msm_fb_line_length(mfd->index, panel_info->xres,
+	fix->line_length = msm_fb_line_length(mfd->index, mfd->ovr_src_width,
 					      bpp);
 
 	/* Make sure all buffers can be addressed on a page boundary by an x
 	 * and y offset */
-
-	remainder = (fix->line_length * panel_info->yres) & (PAGE_SIZE - 1);
+	remainder = (fix->line_length * mfd->ovr_src_height) & (PAGE_SIZE - 1);
 					/* PAGE_SIZE is a power of 2 */
+
 	if (!remainder)
 		remainder = PAGE_SIZE;
 	remainder_mode2 = (fix->line_length *
@@ -1740,9 +1773,9 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	 */
 	if (!bf_supported || mfd->index == 0)
 		fix->smem_len = MAX((msm_fb_line_length(mfd->index,
-							panel_info->xres,
+							mfd->ovr_src_width,
 							bpp) *
-				     panel_info->yres + PAGE_SIZE -
+				     mfd->ovr_src_height + PAGE_SIZE -
 				     remainder) * mfd->fb_page,
 				    (msm_fb_line_length(mfd->index,
 							panel_info->mode2_xres,
@@ -1755,18 +1788,18 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		fix->smem_len = 0;
 	}
 
-	mfd->var_xres = panel_info->xres;
-	mfd->var_yres = panel_info->yres;
+	mfd->var_xres = mfd->ovr_src_width;
+	mfd->var_yres = mfd->ovr_src_height;
 	mfd->var_frame_rate = panel_info->frame_rate;
 
 	var->pixclock = mfd->panel_info.clk_rate;
 	mfd->var_pixclock = var->pixclock;
 
-	var->xres = panel_info->xres;
-	var->yres = panel_info->yres;
-	var->xres_virtual = panel_info->xres;
-	var->yres_virtual = panel_info->yres * mfd->fb_page +
-		((PAGE_SIZE - remainder)/fix->line_length) * mfd->fb_page;
+	var->xres = mfd->ovr_src_width;
+	var->yres = mfd->ovr_src_height;
+	var->xres_virtual = ALIGN( mfd->ovr_src_width, 32);
+ 	var->yres_virtual = mfd->ovr_src_height * mfd->fb_page +
+ 		((PAGE_SIZE - remainder)/fix->line_length) * mfd->fb_page;
 	var->bits_per_pixel = bpp * 8;	/* FrameBuffer color depth */
 	var->reserved[3] = mdp_get_panel_framerate(mfd);
 
@@ -2692,7 +2725,7 @@ static int msm_fb_set_par(struct fb_info *info)
 
 		blank = 1;
 	}
-	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, var->xres,
+	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, mfd->ovr_src_width,
 						       var->bits_per_pixel/8);
 
 	if ((mfd->panel_info.type == DTV_PANEL) && !mfd->panel_power_on) {

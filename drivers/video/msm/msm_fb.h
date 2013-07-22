@@ -160,6 +160,14 @@ struct msm_fb_data_type {
 	__u32 var_pixclock;
 	__u32 var_frame_rate;
 
+	int ovr_src_height;
+	int ovr_src_width;
+	int ovr_dst_height;
+	int ovr_dst_width;
+
+	uint32_t width;
+	uint32_t height;
+
 #ifdef MSM_FB_ENABLE_DBGFS
 	struct dentry *sub_dir;
 #endif
@@ -229,6 +237,8 @@ struct msm_fb_data_type {
 struct msm_fb_backup_type {
 	struct fb_info info;
 	struct mdp_display_commit disp_commit;
+	struct fb_var_screeninfo var;
+	struct msm_fb_data_type mfd;
 };
 
 struct dentry *msm_fb_get_debugfs_root(void);

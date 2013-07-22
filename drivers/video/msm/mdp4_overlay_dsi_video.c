@@ -680,10 +680,10 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 	atomic_set(&vctrl->suspend, 0);
 
-	pipe->src_height = fbi->var.yres;
-	pipe->src_width = fbi->var.xres;
-	pipe->src_h = fbi->var.yres;
-	pipe->src_w = fbi->var.xres;
+	pipe->src_height = mfd->ovr_dst_height;
+	pipe->src_width = mfd->ovr_dst_width;
+	pipe->src_h = mfd->ovr_src_height;
+	pipe->src_w = mfd->ovr_src_width;
 	pipe->src_y = 0;
 	pipe->src_x = 0;
 	pipe->dst_h = fbi->var.yres;

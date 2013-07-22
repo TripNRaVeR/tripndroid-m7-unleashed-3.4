@@ -883,12 +883,12 @@ static void mdp4_overlay_setup_pipe_addr(struct msm_fb_data_type *mfd,
 						pipe->src_width, bpp);
 	} else {
 		 /* 2D */
-		pipe->src_height = fbi->var.yres;
-		pipe->src_width = fbi->var.xres;
-		pipe->src_h = fbi->var.yres;
-		pipe->src_w = fbi->var.xres;
-		pipe->dst_h = fbi->var.yres;
-		pipe->dst_w = fbi->var.xres;
+		pipe->src_height = mfd->ovr_dst_height;
+		pipe->src_width = mfd->ovr_dst_width;
+		pipe->src_h = mfd->ovr_src_height;
+		pipe->src_w = mfd->ovr_src_width;
+		pipe->dst_h = mfd->ovr_dst_height;
+		pipe->dst_w = mfd->ovr_dst_width;
 		pipe->srcp0_ystride = fbi->fix.line_length;
 	}
 	pipe->src_y = 0;
