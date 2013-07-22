@@ -2663,12 +2663,6 @@ config SUPPORT_USB_SPEAKER
 	bool "Support USB Speaker"
 	default n
 
-config SENSE_4_PLUS
-	bool "SENSE 4 PLUS"
-	default y
-	help
-	  Support for SENSE 4 PLUS.
-
 config MSM_NONSMD_PACKET_FILTER
 	bool "Non-SMD based Packet Filter"
 	default n
