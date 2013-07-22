@@ -220,6 +220,13 @@ struct vdec_ioctl_msg {
 #define VDEC_IOCTL_FREE_META_BUFFERS \
 	_IO(VDEC_IOCTL_MAGIC, 40)
 
+#define VDEC_IOCTL_GET_ENABLE_SEC_METADATA \
+	_IOR(VDEC_IOCTL_MAGIC, 41, struct vdec_ioctl_msg)
+
+/*IOCTL params:GET: InputData - NULL, OutputData - unsigned int.*/
+#define VDEC_IOCTL_GET_PERF_LEVEL \
+	_IOR(VDEC_IOCTL_MAGIC, 42, struct vdec_ioctl_msg)
+
 enum vdec_picture {
 	PICTURE_TYPE_I,
 	PICTURE_TYPE_P,
@@ -282,8 +289,7 @@ enum vdec_codec {
 	VDEC_CODECTYPE_MPEG1 = 0x9,
 	VDEC_CODECTYPE_MPEG2 = 0xa,
 	VDEC_CODECTYPE_VC1 = 0xb,
-	VDEC_CODECTYPE_VC1_RCV = 0xc,
-	VDEC_CODECTYPE_HEVC = 0xd,
+	VDEC_CODECTYPE_VC1_RCV = 0xc
 };
 
 enum vdec_mpeg2_profile {
@@ -553,6 +559,8 @@ struct vdec_output_frameinfo {
 	enum vdec_interlaced_format interlaced_format;
 	struct vdec_aspectratioinfo aspect_ratio_info;
 	struct vdec_sep_metadatainfo metadata_info;
+	size_t metadata_len;
+	size_t metadata_offset;
 };
 
 union vdec_msgdata {
