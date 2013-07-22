@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -8,6 +8,10 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ *
+ */
+/*
+ * Qualcomm MSM8960 TSENS driver
  *
  */
 
@@ -21,11 +25,11 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/pm.h>
-#include <linux/mfd/pm8xxx/pm8xxx-adc.h>
 
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
 
+/* Trips: from very hot to very cold */
 enum tsens_trip_type {
 	TSENS_TRIP_STAGE3 = 0,
 	TSENS_TRIP_STAGE2,
@@ -34,6 +38,7 @@ enum tsens_trip_type {
 	TSENS_TRIP_NUM,
 };
 
+/* MSM8960 TSENS register info */
 #define TSENS_CAL_DEGC					30
 #define TSENS_MAIN_SENSOR				0
 
@@ -59,7 +64,7 @@ enum tsens_trip_type {
 #define TSENS_UPPER_STATUS_CLR		BIT((tsens_status_cntl_start + 2))
 #define TSENS_MAX_STATUS_MASK		BIT((tsens_status_cntl_start + 3))
 
-#define TSENS_MEASURE_PERIOD				4 
+#define TSENS_MEASURE_PERIOD				1
 #define TSENS_8960_SLP_CLK_ENA				BIT(26)
 
 #define TSENS_THRESHOLD_ADDR		(MSM_CLK_CTL_BASE + 0x00003624)
@@ -77,13 +82,11 @@ enum tsens_trip_type {
 					TSENS_THRESHOLD_UPPER_LIMIT_SHIFT)
 #define TSENS_THRESHOLD_LOWER_LIMIT_MASK	(TSENS_THRESHOLD_MAX_CODE << \
 					TSENS_THRESHOLD_LOWER_LIMIT_SHIFT)
+/* Initial temperature threshold values */
 #define TSENS_LOWER_LIMIT_TH				0x50
 #define TSENS_UPPER_LIMIT_TH				0xdf
 #define TSENS_MIN_LIMIT_TH				0x0
 #define TSENS_MAX_LIMIT_TH				0xff
-
-#define TSENS_MIN_LIMIT_TEMP				-60
-#define TSENS_MAX_LIMIT_TEMP				120
 
 #define TSENS_S0_STATUS_ADDR			(MSM_CLK_CTL_BASE + 0x00003628)
 #define TSENS_STATUS_ADDR_OFFSET			2
@@ -152,8 +155,6 @@ struct tsens_tm_device_sensor {
 struct tsens_tm_device {
 	bool				prev_reading_avail;
 	int				tsens_factor;
-	int				patherm0;
-	int				patherm1;
 	uint32_t			tsens_num_sensor;
 	enum platform_type		hw_type;
 	int				pm_tsens_thr_data;
@@ -163,10 +164,8 @@ struct tsens_tm_device {
 };
 
 struct tsens_tm_device *tmdev;
-static struct workqueue_struct *monitor_tsense_wq = NULL;
-struct delayed_work monitor_tsens_status_worker;
-static void monitor_tsens_status(struct work_struct *work);
 
+/* Temperature on y axis and ADC-code on x-axis */
 static int tsens_tz_code_to_degC(int adc_code, int sensor_num)
 {
 	int degcbeforefactor, degc;
@@ -238,7 +237,7 @@ int tsens_get_sensor_temp(int sensor_num, unsigned long *temp)
 	if (!tmdev)
 		return -ENODEV;
 
-	if (sensor_num < 0 || sensor_num >= TSENS_MAX_SENSORS || !temp)
+	if (sensor_num < 0 || sensor_num >= TSENS_MAX_SENSORS)
 		return -EINVAL;
 
 	tsens8960_get_temp(sensor_num, temp);
@@ -251,9 +250,6 @@ int tsens_get_temp(struct tsens_device *device, unsigned long *temp)
 {
 	if (!tmdev)
 		return -ENODEV;
-
-	if (!temp)
-		return -EINVAL;
 
 	tsens8960_get_temp(device->sensor_num, temp);
 
@@ -274,6 +270,12 @@ static int tsens_tz_get_mode(struct thermal_zone_device *thermal,
 	return 0;
 }
 
+/* Function to enable the mode.
+ * If the main sensor is disabled all the sensors are disable and
+ * the clock is disabled.
+ * If the main sensor is not enabled and sub sensor is enabled
+ * returns with an error stating the main sensor is not enabled.
+ */
 static int tsens_tz_set_mode(struct thermal_zone_device *thermal,
 			      enum thermal_device_mode mode)
 {
@@ -507,6 +509,9 @@ static int tsens_tz_get_crit_temp(struct thermal_zone_device *thermal,
 static int tsens_tz_notify(struct thermal_zone_device *thermal,
 				int count, enum thermal_trip_type type)
 {
+	/* TSENS driver does not shutdown the device.
+	   All Thermal notification are sent to the
+	   thermal daemon to take appropriate action */
 	return 1;
 }
 
@@ -610,55 +615,6 @@ static struct thermal_zone_device_ops tsens_thermal_zone_ops = {
 	.get_crit_temp = tsens_tz_get_crit_temp,
 	.notify = tsens_tz_notify,
 };
-static void monitor_tsens_status(struct work_struct *work)
-{
-	unsigned int i, j, cntl, threshold, int_status, config;
-	int code;
-	int enable = 0;
-	struct pm8xxx_adc_chan_result result;
-	int rc = -1;
-
-	cntl = readl_relaxed(TSENS_CNTL_ADDR);
-	threshold = readl_relaxed(TSENS_THRESHOLD_ADDR);
-	int_status = readl_relaxed(TSENS_INT_STATUS_ADDR);
-	config = readl_relaxed(TSENS_8960_CONFIG_ADDR);
-
-	pr_info("TSENS_CNTL_ADDR[0x%08X], TSENS_THRESHOLD_ADDR[0x%08X], TSENS_INT_STATUS_ADDR[0x%08X], TSENS_8960_CONFIG_ADDR[0x%08X]\n", cntl, threshold, int_status, config);
-
-	if (tmdev->hw_type == APQ_8064)
-		cntl &= (uint32_t) TSENS_8064_SENSORS_EN;
-	else
-		cntl &= (uint32_t) SENSORS_EN;
-	cntl >>= TSENS_SENSOR0_SHIFT;
-
-	for (i = 0; i < tmdev->tsens_num_sensor; i++) {
-		if (i < 5)
-			code = readl_relaxed(TSENS_S0_STATUS_ADDR
-				+ (i << TSENS_STATUS_ADDR_OFFSET));
-		else {
-			j = i-5;
-			code = readl_relaxed(TSENS_8064_S5_STATUS_ADDR
-				+ (j << TSENS_STATUS_ADDR_OFFSET));
-		}
-
-		enable = cntl & (0x1 << i);
-		if(enable > 0)
-			pr_info("Sensor %d = %d C\n", i, tsens_tz_code_to_degC(code, i));
-	}
-
-	if (tmdev->patherm0 > 0) {
-		rc = pm8xxx_adc_read(tmdev->patherm0, &result);
-		pr_info("pa_therm0 = %lld C\n", result.physical);
-	}
-	if (tmdev->patherm1 > 0) {
-		rc = pm8xxx_adc_read(tmdev->patherm1, &result);
-		pr_info("pa_therm1 = %lld C\n", result.physical);
-	}
-
-	if (monitor_tsense_wq) {
-		queue_delayed_work(monitor_tsense_wq, &monitor_tsens_status_worker, msecs_to_jiffies(60000));
-	}
-}
 
 static void notify_uspace_tsens_fn(struct work_struct *work)
 {
@@ -716,7 +672,7 @@ static void tsens_scheduler_fn(struct work_struct *work)
 			if (lower_th_x)
 				mask |= TSENS_LOWER_STATUS_CLR;
 			if (upper_th_x || lower_th_x) {
-				
+				/* Notify user space */
 				schedule_work(&tm->sensor[i].work);
 				adc_code = readl_relaxed(sensor_addr);
 				pr_debug("Trigger (%d degrees) for sensor %d\n",
@@ -738,20 +694,6 @@ static irqreturn_t tsens_isr(int irq, void *data)
 	schedule_work(&tmdev->tsens_work);
 
 	return IRQ_HANDLED;
-}
-
-static void tsens8960_sensor_mode_init(void)
-{
-	unsigned int reg_cntl = 0;
-
-	reg_cntl = readl_relaxed(TSENS_CNTL_ADDR);
-	if (tmdev->hw_type == MSM_8960 || tmdev->hw_type == MDM_9615 ||
-			tmdev->hw_type == APQ_8064) {
-		writel_relaxed(reg_cntl &
-				~((((1 << tmdev->tsens_num_sensor) - 1) >> 1)
-				<< (TSENS_SENSOR0_SHIFT + 1)), TSENS_CNTL_ADDR);
-		tmdev->sensor[TSENS_MAIN_SENSOR].mode = THERMAL_DEVICE_ENABLED;
-	}
 }
 
 #ifdef CONFIG_PM
@@ -854,8 +796,6 @@ static void tsens_hw_init(void)
 {
 	unsigned int reg_cntl = 0, reg_cfg = 0, reg_thr = 0;
 	unsigned int reg_status_cntl = 0;
-	int tsens_min_limit_th = 0, tsens_max_limit_th = 0;
-	int i, sort_max = 0, sort_min = 0;
 
 	reg_cntl = readl_relaxed(TSENS_CNTL_ADDR);
 	writel_relaxed(reg_cntl | TSENS_SW_RST, TSENS_CNTL_ADDR);
@@ -874,28 +814,6 @@ static void tsens_hw_init(void)
 		reg_cfg = (reg_cfg & ~TSENS_8960_CONFIG_MASK) |
 			(TSENS_8960_CONFIG << TSENS_8960_CONFIG_SHIFT);
 		writel_relaxed(reg_cfg, TSENS_8960_CONFIG_ADDR);
-
-	if (tmdev->tsens_num_sensor) {
-		for (i = 0; i < tmdev->tsens_num_sensor; i++) {
-			if (tmdev->sensor[i].offset > tmdev->sensor[sort_max].offset)
-				sort_max = i;
-			else  if (tmdev->sensor[i].offset < tmdev->sensor[sort_min].offset)
-				sort_min = i;
-		}
-		
-		tsens_min_limit_th = tsens_tz_degC_to_code(TSENS_MIN_LIMIT_TEMP, sort_min);
-		tsens_max_limit_th = tsens_tz_degC_to_code(TSENS_MAX_LIMIT_TEMP, sort_max);
-
-		for (i = 0; i < tmdev->tsens_num_sensor; i++) {
-			pr_info("%s: sensor[%d] min_threshold %d, max_threshold %d\n",  __func__, i,
-				tsens_tz_code_to_degC(tsens_min_limit_th, i), tsens_tz_code_to_degC(tsens_max_limit_th,i));
-		}
-	}
-	else {
-		tsens_min_limit_th = TSENS_MIN_LIMIT_TH;
-		tsens_max_limit_th = TSENS_MAX_LIMIT_TH;
-	}
-
 	} else if (tmdev->hw_type == MSM_8660) {
 		reg_cntl |= TSENS_8660_SLP_CLK_ENA | TSENS_EN |
 			(TSENS_MEASURE_PERIOD << 16) |
@@ -904,6 +822,8 @@ static void tsens_hw_init(void)
 			(((1 << tmdev->tsens_num_sensor) - 1) <<
 			TSENS_SENSOR0_SHIFT);
 
+		/* set TSENS_CONFIG bits (bits 29:28 of TSENS_CNTL) to '01';
+			this setting found to be optimal. */
 		reg_cntl = (reg_cntl & ~TSENS_8660_CONFIG_MASK) |
 				(TSENS_8660_CONFIG << TSENS_8660_CONFIG_SHIFT);
 
@@ -931,8 +851,8 @@ static void tsens_hw_init(void)
 
 	reg_thr |= (TSENS_LOWER_LIMIT_TH << TSENS_THRESHOLD_LOWER_LIMIT_SHIFT) |
 		(TSENS_UPPER_LIMIT_TH << TSENS_THRESHOLD_UPPER_LIMIT_SHIFT) |
-		(tsens_min_limit_th << TSENS_THRESHOLD_MIN_LIMIT_SHIFT) |
-		(tsens_max_limit_th << TSENS_THRESHOLD_MAX_LIMIT_SHIFT);
+		(TSENS_MIN_LIMIT_TH << TSENS_THRESHOLD_MIN_LIMIT_SHIFT) |
+		(TSENS_MAX_LIMIT_TH << TSENS_THRESHOLD_MAX_LIMIT_SHIFT);
 	writel_relaxed(reg_thr, TSENS_THRESHOLD_ADDR);
 }
 
@@ -1001,17 +921,6 @@ static int tsens_calib_sensors8960(void)
 	return 0;
 }
 
-static int tsens_check_version_support(void)
-{
-	int rc = 0;
-
-	if (tmdev->hw_type == MSM_8960)
-		if (SOCINFO_VERSION_MAJOR(socinfo_get_version()) == 1)
-			rc = -ENODEV;
-
-	return rc;
-}
-
 static int tsens_calib_sensors(void)
 {
 	int rc = -ENODEV;
@@ -1048,15 +957,6 @@ int msm_tsens_early_init(struct tsens_platform_data *pdata)
 	tmdev->tsens_factor = pdata->tsens_factor;
 	tmdev->tsens_num_sensor = pdata->tsens_num_sensor;
 	tmdev->hw_type = pdata->hw_type;
-	tmdev->patherm0 = pdata->patherm0;
-	tmdev->patherm1 = pdata->patherm1;
-
-	rc = tsens_check_version_support();
-	if (rc < 0) {
-		kfree(tmdev);
-		tmdev = NULL;
-		return rc;
-	}
 
 	rc = tsens_calib_sensors();
 	if (rc < 0) {
@@ -1071,16 +971,6 @@ int msm_tsens_early_init(struct tsens_platform_data *pdata)
 		tsens_status_cntl_start = TSENS_STATUS_CNTL_OFFSET;
 
 	tsens_hw_init();
-
-	if (monitor_tsense_wq == NULL) {
-		
-		monitor_tsense_wq = create_workqueue("monitor_tsense_wq");
-		printk(KERN_INFO "Create monitor tsense workqueue(0x%x)...\n", (unsigned int)monitor_tsense_wq);
-	}
-	if (monitor_tsense_wq) {
-		INIT_DELAYED_WORK(&monitor_tsens_status_worker, monitor_tsens_status);
-		queue_delayed_work(monitor_tsense_wq, &monitor_tsens_status_worker, msecs_to_jiffies(0));
-	}
 
 	pr_debug("msm_tsens_early_init: done\n");
 
@@ -1110,10 +1000,7 @@ static int __devinit tsens_tm_probe(struct platform_device *pdev)
 			rc = -ENODEV;
 			goto fail;
 		}
-		tmdev->sensor[i].mode = THERMAL_DEVICE_DISABLED;
 	}
-
-	tsens8960_sensor_mode_init();
 
 	rc = request_irq(TSENS_UPPER_LOWER_INT, tsens_isr,
 		IRQF_TRIGGER_RISING, "tsens_interrupt", tmdev);
