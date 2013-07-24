@@ -3720,10 +3720,11 @@ static struct mdm_platform_data mdm_platform_data = {
 };
 
 static struct tsens_platform_data msm_tsens_pdata  = {
-		.slope			= {910, 910, 910, 910, 910},
 		.tsens_factor		= 1000,
-		.hw_type		= MSM_8960,
-		.tsens_num_sensor	= 5,
+		.hw_type		= APQ_8064,
+		.tsens_num_sensor	= 11,
+		.slope = {1176, 1176, 1154, 1176, 1111,
+			1132, 1132, 1199, 1132, 1199, 1132},
 };
 
 static struct platform_device msm_tsens_device = {
@@ -3733,10 +3734,20 @@ static struct platform_device msm_tsens_device = {
 
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 0,
-	.poll_ms = 250,
-	.limit_temp_degC = 60,
-	.temp_hysteresis_degC = 10,
-	.freq_step = 2,
+	.poll_ms = 150,
+	.shutdown_temp = 88,
+
+	.allowed_max_high = 82,
+	.allowed_max_low = 78,
+	.allowed_max_freq = 384000,
+
+	.allowed_mid_high = 79,
+	.allowed_mid_low = 74,
+	.allowed_mid_freq = 810000,
+
+	.allowed_low_high = 76,
+	.allowed_low_low = 70,
+	.allowed_low_freq = 1350000,
 };
 
 #define MSM_SHARED_RAM_PHYS 0x80000000
