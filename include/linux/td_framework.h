@@ -27,3 +27,4 @@
 
 /* output debug info to kmsg, adds some heavy overhead! */
 #define TDF_DEBUG		0
+#define TDF_SUSPEND_DEBUG	0

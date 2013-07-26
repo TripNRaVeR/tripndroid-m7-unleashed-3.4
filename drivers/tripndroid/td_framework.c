@@ -42,6 +42,9 @@ static ssize_t show_##file_name						\
 }
 show_one(powersave_active, powersaving_active);
 show_one(fast_charge, tdf_fast_charge);
+#ifdef TDF_SUSPEND_DEBUG
+show_one(suspend_state, tdf_suspend_state);
+#endif
 
 static ssize_t __refdata store_powersave_active(struct kobject *a, struct attribute *b,
 				   const char *buf, size_t count)
@@ -86,9 +89,29 @@ static ssize_t store_fast_charge(struct kobject *a, struct attribute *b,
 }
 define_one_global_rw(fast_charge);
 
+#ifdef TDF_SUSPEND_DEBUG
+static ssize_t store_suspend_state(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	unsigned int value;
+	int ret;
+	ret = sscanf(buf, "%u", &value);
+	if (ret != 1)
+		return -EINVAL;
+
+	tdf_suspend_state = value;
+
+	return count;
+}
+define_one_global_rw(suspend_state);
+#endif
+
 static struct attribute *tdf_attributes[] = {
 	&powersave_active.attr,
 	&fast_charge.attr,
+#ifdef TDF_SUSPEND_DEBUG
+	&suspend_state.attr,
+#endif
 	NULL
 };
 
