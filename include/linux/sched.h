@@ -119,6 +119,12 @@ extern unsigned long avg_nr_running(void);
 extern unsigned long nr_iowait_cpu(int cpu);
 extern unsigned long this_cpu_load(void);
 
+/* tdf scheduler defines */
+#ifdef CONFIG_TDF_RQ_STATS
+extern void sched_update_tdf(int cpu, unsigned long nr, bool inc);
+extern void sched_running_avg(int *avg);
+#endif
+
 extern void sched_get_nr_running_avg(int *avg, int *iowait_avg);
 
 extern void calc_global_load(unsigned long ticks);

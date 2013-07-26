@@ -2,6 +2,7 @@ menu "TripNDroid Framework"
 
 config TRIPNDROID_FRAMEWORK
 	bool "TripNDroid Framework"
+	select ARM_L1_CACHE_SHIFT_6
 	default n
 	help
 	  Implement a custom kernel overhaul for mobile Android devices.
@@ -16,6 +17,15 @@ menuconfig TDF_CPU_MANAGEMENT
 	  Choose this option if you want TDF to control the cpus
 
 	source "drivers/tripndroid/cpu_management/Kconfig"
+
+menuconfig TDF_SCHED_MANAGEMENT
+	bool "TDF Scheduler Management"
+	depends on TRIPNDROID_FRAMEWORK
+	default n
+	help
+	  Choose this option if you want TDF to control the linux scheduler
+
+	source "drivers/tripndroid/sched_management/Kconfig"
 
 
 endmenu
