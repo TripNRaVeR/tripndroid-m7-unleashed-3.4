@@ -190,7 +190,7 @@ static int mp_decision(void)
 
 	total_time += this_time;
 
-	current_run = rq_info.rq_avg;
+	sched_running_avg(&current_run);
 #ifdef TDF_DEBUG
 	pr_info(" [TDF] current_run = %u", current_run);
 #endif
