@@ -1199,8 +1199,6 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 	uint64_t timestamp;
 	uint64_t temp;
 	
-	uint32_t eos_flush_check;
-	
 
 	wake_lock_timeout(&compr_lpa_wakelock, 3 * HZ);
 	switch (cmd) {
