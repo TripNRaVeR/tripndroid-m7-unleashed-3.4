@@ -31,6 +31,8 @@ enum platform_type {
 struct tsens_platform_data {
 	int				slope[TSENS_MAX_SENSORS];
 	int				tsens_factor;
+	int				patherm0;
+	int				patherm1;
 	uint32_t			tsens_num_sensor;
 	enum platform_type		hw_type;
 };
