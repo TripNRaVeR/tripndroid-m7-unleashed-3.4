@@ -1584,17 +1584,10 @@ static void msm_fb_resolution_override(struct msm_fb_data_type *mfd)
 
 	
 	if (mfd->index == 0) {
-#ifdef CONFIG_FB_MSM_RESOLUTION_OVERRIDE
-		mfd->ovr_src_height = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_SRC_HEIGHT;
-		mfd->ovr_src_width = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_SRC_WIDTH;
-		mfd->ovr_dst_height = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_DST_HEIGHT;
-		mfd->ovr_dst_width = CONFIG_FB_MSM_RESOLUTION_OVERRIDE_DST_WIDTH;
-#else
 		mfd->ovr_src_height = panel_info->yres;
 		mfd->ovr_src_width = panel_info->xres;
 		mfd->ovr_dst_height = panel_info->yres;
 		mfd->ovr_dst_width = panel_info->xres;
-#endif
 	} else {
 		mfd->ovr_src_height = panel_info->yres;
 		mfd->ovr_src_width = panel_info->xres;

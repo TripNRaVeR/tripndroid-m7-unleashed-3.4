@@ -1539,11 +1539,11 @@ u32 mdp_get_panel_framerate(struct msm_fb_data_type *mfd)
 		(panel_info->lcdc.h_back_porch +
 		 panel_info->lcdc.h_front_porch +
 		 panel_info->lcdc.h_pulse_width +
-		 mfd->ovr_src_width) *
+		 panel_info->xres) *
 		(panel_info->lcdc.v_back_porch +
 		 panel_info->lcdc.v_front_porch +
 		 panel_info->lcdc.v_pulse_width +
-		 mfd->ovr_src_height);
+		 panel_info->yres);
 
 	if (total_pixel)
 		frame_rate = pixel_rate / total_pixel;
