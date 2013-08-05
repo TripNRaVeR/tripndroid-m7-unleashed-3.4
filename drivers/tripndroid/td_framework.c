@@ -46,7 +46,7 @@ show_one(fast_charge, tdf_fast_charge);
 show_one(suspend_state, tdf_suspend_state);
 #endif
 
-static ssize_t __refdata store_powersave_active(struct kobject *a, struct attribute *b,
+static ssize_t store_powersave_active(struct kobject *a, struct attribute *b,
 				   const char *buf, size_t count)
 {
 	unsigned int value;
@@ -56,19 +56,6 @@ static ssize_t __refdata store_powersave_active(struct kobject *a, struct attrib
 		return -EINVAL;
 
 	powersaving_active = value;
-
-	if (value == 1) {
-		if (cpu_online(3))
-			cpu_down(3);
-		if (cpu_online(2))
-			cpu_down(2);
-	}
-	else {
-		if (!cpu_online(2))
-			cpu_up(2);
-		if (!cpu_online(3))
-			cpu_up(3);
-	}
 
 	return count;
 }
