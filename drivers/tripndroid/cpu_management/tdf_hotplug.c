@@ -307,7 +307,7 @@ out:
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void tripndroid_hp_early_suspend(struct early_suspend *handler)
 {
-	int i;
+	int i = nr_cpu_ids;
 
 	cancel_delayed_work_sync(&tripndroid_hp_w);
 
@@ -325,7 +325,7 @@ static void tripndroid_hp_early_suspend(struct early_suspend *handler)
 
 static void __cpuinit tripndroid_hp_late_resume(struct early_suspend *handler)
 {
-	int i;
+	int i = nr_cpu_ids;
 	int max_cpus;
 
 	if (powersaving_active == 1) {
