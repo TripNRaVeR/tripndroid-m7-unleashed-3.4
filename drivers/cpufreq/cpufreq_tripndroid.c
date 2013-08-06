@@ -155,7 +155,7 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 	if (load_since_change > cpu_load)
 		cpu_load = load_since_change;
 
-	if (tdf_suspend_state == 1) {
+	if (tdf_suspend_state == 1 && pcpu->policy->max != TDF_FREQ_SLEEP_MAX) {
 	pcpu->policy->max = TDF_FREQ_SLEEP_MAX;
 	}
 	else {
