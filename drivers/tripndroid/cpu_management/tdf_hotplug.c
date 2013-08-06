@@ -230,7 +230,7 @@ static int mp_decision(void)
 	return next_state;
 }
 
-static void __cpuinit tripndroid_hp_wt(struct work_struct *work)
+static void tripndroid_hp_wt(struct work_struct *work)
 {
 	unsigned int cpu = nr_cpu_ids;
 
@@ -323,7 +323,7 @@ static void tripndroid_hp_early_suspend(struct early_suspend *handler)
 	}
 }
 
-static void __cpuinit tripndroid_hp_late_resume(struct early_suspend *handler)
+static void tripndroid_hp_late_resume(struct early_suspend *handler)
 {
 	int i = nr_cpu_ids;
 	int max_cpus;

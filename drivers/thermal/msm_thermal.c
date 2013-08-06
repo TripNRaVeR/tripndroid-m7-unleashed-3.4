@@ -98,7 +98,7 @@ static int update_cpu_max_freq(struct cpufreq_policy *cpu_policy,
     return ret;
 }
 
-static void __cpuinit check_temp(struct work_struct *work)
+static void check_temp(struct work_struct *work)
 {
     struct cpufreq_policy *cpu_policy = NULL;
     struct tsens_device tsens_dev;
