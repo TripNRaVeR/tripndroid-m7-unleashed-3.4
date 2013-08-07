@@ -77,8 +77,11 @@ static u64 hispeed_freq;
 #define DEFAULT_GO_HISPEED_LOAD 95
 static unsigned long go_hispeed_load;
 
-#define DEFAULT_MIN_SAMPLE_TIME 20 * USEC_PER_MSEC
-static unsigned long min_sample_time;
+#define DEFAULT_DOWN_SAMPLE_TIME 20 * USEC_PER_MSEC
+static unsigned long down_sample_time;
+
+#define DEFAULT_UP_SAMPLE_TIME 10 * USEC_PER_MSEC
+static unsigned long up_sample_time;
 
 #define DEFAULT_TIMER_RATE 20 * USEC_PER_MSEC
 static unsigned long timer_rate;
@@ -120,11 +123,12 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 	smp_wmb();
 
 	/* If we raced with cancelling a timer, skip. */
-	if (!idle_exit_time)
+	if (!idle_exit_time) {
 		goto exit;
+	}
 
-	delta_idle = (unsigned int) cputime64_sub(now_idle, time_in_idle);
-	delta_time = (unsigned int) cputime64_sub(pcpu->timer_run_time, idle_exit_time);
+	delta_idle = (unsigned int) (now_idle - time_in_idle);
+	delta_time = (unsigned int) (pcpu->timer_run_time - idle_exit_time);
 
 	/*
 	 * when timer running less than 1ms after short-term sample started, retry it
@@ -139,8 +143,8 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 
 	tdf_cpu_load = cpu_load;
 
-	delta_idle = (unsigned int) cputime64_sub(now_idle, pcpu->freq_change_time_in_idle);
-	delta_time = (unsigned int) cputime64_sub(pcpu->timer_run_time, pcpu->freq_change_time);
+	delta_idle = (unsigned int) (now_idle - pcpu->freq_change_time_in_idle);
+	delta_time = (unsigned int) (pcpu->timer_run_time - pcpu->freq_change_time);
 
 	if ((delta_time == 0) || (delta_idle > delta_time))
 		load_since_change = 0;
@@ -194,14 +198,20 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 
 	new_freq = pcpu->freq_table[index].frequency;
 
-	if (pcpu->target_freq == new_freq)
+	if (pcpu->target_freq == new_freq) {
 		goto rearm_if_notmax;
+	}
 
 	/* scale only down if we have been at this frequency for the minimum sample time */
 	if (new_freq < pcpu->target_freq) {
-		if (cputime64_sub(pcpu->timer_run_time, pcpu->freq_change_time)
-		    < min_sample_time)
+		if ((pcpu->timer_run_time - pcpu->freq_change_time) < down_sample_time) {
 			goto rearm;
+		}
+	}
+	else {
+		if ((pcpu->timer_run_time - pcpu->freq_change_time) < up_sample_time) {
+			goto rearm;
+		}
 	}
 
 	if (new_freq < pcpu->target_freq) {
@@ -230,14 +240,14 @@ rearm:
 		if (pcpu->target_freq == pcpu->policy->min) {
 			smp_rmb();
 
-			if (pcpu->idling)
+			if (pcpu->idling) {
 				goto exit;
-
+			}
 			pcpu->timer_idlecancel = 1;
 		}
 
 		pcpu->time_in_idle = get_cpu_idle_time_us(data, &pcpu->idle_exit_time);
-		mod_timer(&pcpu->cpu_timer, jiffies + usecs_to_jiffies(timer_rate));
+		mod_timer(&pcpu->cpu_timer, jiffies + 2);
 	}
 
 exit:
@@ -469,13 +479,13 @@ static ssize_t store_go_hispeed_load(struct kobject *kobj,
 static struct global_attr go_hispeed_load_attr = __ATTR(go_hispeed_load, 0644,
 		show_go_hispeed_load, store_go_hispeed_load);
 
-static ssize_t show_min_sample_time(struct kobject *kobj,
+static ssize_t show_down_sample_time(struct kobject *kobj,
 				struct attribute *attr, char *buf)
 {
-	return sprintf(buf, "%lu\n", min_sample_time);
+	return sprintf(buf, "%lu\n", down_sample_time);
 }
 
-static ssize_t store_min_sample_time(struct kobject *kobj,
+static ssize_t store_down_sample_time(struct kobject *kobj,
 			struct attribute *attr, const char *buf, size_t count)
 {
 	int ret;
@@ -484,12 +494,34 @@ static ssize_t store_min_sample_time(struct kobject *kobj,
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-	min_sample_time = val;
+	down_sample_time = val;
 	return count;
 }
 
-static struct global_attr min_sample_time_attr = __ATTR(min_sample_time, 0644,
-		show_min_sample_time, store_min_sample_time);
+static struct global_attr down_sample_time_attr = __ATTR(down_sample_time, 0644,
+		show_down_sample_time, store_down_sample_time);
+
+static ssize_t show_up_sample_time(struct kobject *kobj,
+				struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%lu\n", up_sample_time);
+}
+
+static ssize_t store_up_sample_time(struct kobject *kobj,
+			struct attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long val;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+	up_sample_time = val;
+	return count;
+}
+
+static struct global_attr up_sample_time_attr = __ATTR(up_sample_time, 0644,
+		show_up_sample_time, store_up_sample_time);
 
 static ssize_t show_timer_rate(struct kobject *kobj,
 			struct attribute *attr, char *buf)
@@ -516,7 +548,8 @@ static struct global_attr timer_rate_attr = __ATTR(timer_rate, 0644,
 static struct attribute *tripndroid_attributes[] = {
 	&hispeed_freq_attr.attr,
 	&go_hispeed_load_attr.attr,
-	&min_sample_time_attr.attr,
+	&down_sample_time_attr.attr,
+	&up_sample_time_attr.attr,
 	&timer_rate_attr.attr,
 	NULL,
 };
@@ -632,7 +665,8 @@ static int __init cpufreq_tripndroid_init(void)
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
 
 	go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
-	min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
+	down_sample_time = DEFAULT_DOWN_SAMPLE_TIME;
+	up_sample_time = DEFAULT_UP_SAMPLE_TIME;
 	timer_rate = DEFAULT_TIMER_RATE;
 
 	/* per-cpu timers */
