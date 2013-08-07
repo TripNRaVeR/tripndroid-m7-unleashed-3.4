@@ -2071,22 +2071,10 @@ static void scan_for_empty_cpusets(struct cpuset *root)
  * Called within get_online_cpus().  Needs to call cgroup_lock()
  * before calling generate_sched_domains().
  */
-void cpuset_update_active_cpus(void)
+void cpuset_update_active_cpus(bool cpu_online)
 {
-	struct sched_domain_attr *attr;
-	cpumask_var_t *doms;
-	int ndoms;
-
-	cgroup_lock();
-	mutex_lock(&callback_mutex);
-	cpumask_copy(top_cpuset.cpus_allowed, cpu_active_mask);
-	mutex_unlock(&callback_mutex);
-	scan_for_empty_cpusets(&top_cpuset);
-	ndoms = generate_sched_domains(&doms, &attr);
-	cgroup_unlock();
-
-	/* Have scheduler rebuild the domains */
-	partition_sched_domains(ndoms, doms, attr);
+	partition_sched_domains(1, NULL, NULL);
+	schedule_work(&cpuset_hotplug_work);
 }
 
 #ifdef CONFIG_MEMORY_HOTPLUG
