@@ -339,6 +339,8 @@ static void tripndroid_hp_late_resume(struct early_suspend *handler)
 	tdf_suspend_state = 0;
 	}
 
+	was_paused = true;
+
 	for (i = 1; i < max_cpus; i++) {
 		if (!cpu_online(i))
 			cpu_up(i);
