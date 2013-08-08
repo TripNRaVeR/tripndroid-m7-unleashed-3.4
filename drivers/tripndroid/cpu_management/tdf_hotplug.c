@@ -347,7 +347,7 @@ static void tripndroid_hp_late_resume(struct early_suspend *handler)
 	per_cpu(tripndroid_hp_cpudata, i).on_time = ktime_to_ms(ktime_get());
 	}
 
-	schedule_delayed_work_on(0, &tripndroid_hp_w, msecs_to_jiffies(10));
+	schedule_delayed_work_on(0, &tripndroid_hp_w, 0);
 }
 
 static struct early_suspend tripndroid_hp_early_suspend_struct_driver = {
