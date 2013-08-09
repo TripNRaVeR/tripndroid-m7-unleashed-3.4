@@ -31,13 +31,18 @@
 #include <linux/kthread.h>
 #include <linux/mutex.h>
 #include <linux/earlysuspend.h>
+
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
 #include <linux/td_framework.h>
+#endif
 
 #include <asm/cputime.h>
 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
 extern unsigned int tdf_suspend_state;
 extern unsigned int tdf_cpu_load;
 extern unsigned int powersaving_active;
+#endif
 
 static atomic_t active_count = ATOMIC_INIT(0);
 
@@ -151,7 +156,9 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 	else
 		cpu_load = 100 * (delta_time - delta_idle) / delta_time;
 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
 	tdf_cpu_load = cpu_load;
+#endif
 
 	delta_idle = (unsigned int) (now_idle - pcpu->freq_change_time_in_idle);
 	delta_time = (unsigned int) (pcpu->timer_run_time - pcpu->freq_change_time);
@@ -169,6 +176,7 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 	if (load_since_change > cpu_load)
 		cpu_load = load_since_change;
 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
 	if (tdf_suspend_state == 1 && pcpu->policy->max != TDF_FREQ_SLEEP_MAX) {
 	pcpu->policy->max = TDF_FREQ_SLEEP_MAX;
 	new_freq = pcpu->policy->min;
@@ -177,6 +185,7 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 	else {
 	pcpu->policy->max = hispeed_freq;
 	}
+#endif
 
 	if (cpu_load >= go_hispeed_load) {
 
@@ -364,6 +373,7 @@ static int cpufreq_tripndroid_up_task(void *data)
 				struct cpufreq_tripndroid_cpuinfo *pjcpu =
 					&per_cpu(cpuinfo, j);
 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
 				if (tdf_suspend_state == 1) {
 					if (pjcpu->target_freq > TDF_FREQ_SLEEP_MAX)
 						pjcpu->target_freq = TDF_FREQ_SLEEP_MAX;
@@ -374,7 +384,7 @@ static int cpufreq_tripndroid_up_task(void *data)
 					if (pjcpu->target_freq > TDF_FREQ_PWRSAVE_MAX)
 						pjcpu->target_freq = TDF_FREQ_PWRSAVE_MAX;
 				}
-
+#endif
 				if (pjcpu->target_freq > max_freq)
 					max_freq = pjcpu->target_freq;
 
@@ -423,6 +433,7 @@ static void cpufreq_tripndroid_freq_down(struct work_struct *work)
 			struct cpufreq_tripndroid_cpuinfo *pjcpu =
 				&per_cpu(cpuinfo, j);
 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
 			if (tdf_suspend_state == 1) {
 				if (pjcpu->target_freq > TDF_FREQ_SLEEP_MAX)
 					pjcpu->target_freq = TDF_FREQ_SLEEP_MAX;
@@ -433,7 +444,7 @@ static void cpufreq_tripndroid_freq_down(struct work_struct *work)
 				if (pjcpu->target_freq > TDF_FREQ_PWRSAVE_MAX)
 					pjcpu->target_freq = TDF_FREQ_PWRSAVE_MAX;
 			}
-
+#endif
 			if (pjcpu->target_freq > max_freq)
 				max_freq = pjcpu->target_freq;
 		}
