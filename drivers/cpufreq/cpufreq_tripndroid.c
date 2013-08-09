@@ -53,6 +53,7 @@ struct cpufreq_tripndroid_cpuinfo {
 	struct cpufreq_policy *policy;
 	struct cpufreq_frequency_table *freq_table;
 	unsigned int target_freq;
+	unsigned int freq_table_size;
 	int governor_enabled;
 }; 
 
@@ -98,6 +99,14 @@ struct cpufreq_governor cpufreq_gov_tripndroid = {
 	.owner = THIS_MODULE,
 };
 
+static unsigned int get_freq_table_size(struct cpufreq_frequency_table *freq_table) {
+
+	unsigned int size = 0;
+
+	while (freq_table[++size].frequency != CPUFREQ_TABLE_END);
+		return size;
+}
+
 static void cpufreq_tripndroid_timer(unsigned long data)
 {
 	unsigned int delta_idle;
@@ -108,9 +117,10 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 	u64 idle_exit_time;
 	struct cpufreq_tripndroid_cpuinfo *pcpu = &per_cpu(cpuinfo, data);
 	u64 now_idle;
-	unsigned int new_freq;
-	unsigned int index;
 	unsigned long flags;
+	unsigned int new_freq;
+	int index;
+	int ret;
 
 	smp_rmb();
 
@@ -161,6 +171,8 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 
 	if (tdf_suspend_state == 1 && pcpu->policy->max != TDF_FREQ_SLEEP_MAX) {
 	pcpu->policy->max = TDF_FREQ_SLEEP_MAX;
+	new_freq = pcpu->policy->min;
+	pcpu->target_freq = pcpu->policy->cur;
 	}
 	else {
 	pcpu->policy->max = hispeed_freq;
@@ -168,35 +180,39 @@ static void cpufreq_tripndroid_timer(unsigned long data)
 
 	if (cpu_load >= go_hispeed_load) {
 
-		if (pcpu->target_freq < hispeed_freq &&
-		    hispeed_freq < pcpu->policy->max) {
-			new_freq = hispeed_freq;
-		} 
-		else {
+		ret = cpufreq_frequency_table_target(
+				pcpu->policy, pcpu->freq_table,
+				pcpu->policy->cur, CPUFREQ_RELATION_H,
+				&index);
 
-			new_freq = pcpu->policy->max * cpu_load / 100;
+			if (pcpu->policy->cur < pcpu->policy->max)
 
-			if (new_freq < hispeed_freq)
-				new_freq = hispeed_freq;
-
-			if (pcpu->target_freq == hispeed_freq &&
-			    new_freq > hispeed_freq &&
-			    pcpu->timer_run_time < timer_rate) {
-
+			if (ret < 0)
 				goto rearm;
-			}
-		}
+
+			index += 1;
+
+			if (index >= pcpu->freq_table_size)
+				index = pcpu->freq_table_size - 1;
+
+			new_freq = pcpu->freq_table[index].frequency;
 	}
 	else {
-		new_freq = pcpu->policy->max * cpu_load / 100;
+
+			new_freq = pcpu->policy->max * cpu_load / 100;
+			ret = cpufreq_frequency_table_target(pcpu->policy, pcpu->freq_table,
+                                                 new_freq, CPUFREQ_RELATION_H,
+                                                 &index);
+			if (ret < 0)
+				goto rearm;
+
+			new_freq = pcpu->freq_table[index].frequency;
 	}
 
 	if (cpufreq_frequency_table_target(pcpu->policy, pcpu->freq_table, new_freq, CPUFREQ_RELATION_H, &index)) {
 		pr_warn_once("timer %d: cpufreq_frequency_table_target error\n", (int) data);
 			goto rearm;
 	}
-
-	new_freq = pcpu->freq_table[index].frequency;
 
 	if (pcpu->target_freq == new_freq) {
 		goto rearm_if_notmax;
@@ -579,6 +595,7 @@ static int cpufreq_governor_tripndroid(struct cpufreq_policy *policy,
 			pcpu->policy = policy;
 			pcpu->target_freq = policy->cur;
 			pcpu->freq_table = freq_table;
+			pcpu->freq_table_size = get_freq_table_size(pcpu->freq_table);
 			pcpu->freq_change_time_in_idle =
 				get_cpu_idle_time_us(j, &pcpu->freq_change_time);
 
