@@ -83,7 +83,7 @@ static u64 hispeed_freq;
 #define DEFAULT_GO_HISPEED_LOAD 95
 static unsigned long go_hispeed_load;
 
-#define DEFAULT_DOWN_SAMPLE_TIME 20 * USEC_PER_MSEC
+#define DEFAULT_DOWN_SAMPLE_TIME 30 * USEC_PER_MSEC
 static unsigned long down_sample_time;
 
 #define DEFAULT_UP_SAMPLE_TIME 10 * USEC_PER_MSEC
