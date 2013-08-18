@@ -925,6 +925,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.critical_alarm_vol_cols = sizeof(critical_alarm_voltage_mv) / sizeof(int),
 	.overload_vol_thr_mv = 4000,
 	.overload_curr_thr_ma = 0,
+	.smooth_chg_full_delay_min = 1,
 
 	.icharger.name = "pm8921",
 	.icharger.set_limit_charge_enable = pm8921_limit_charge_enable,
@@ -1100,6 +1101,8 @@ struct pm8921_bms_battery_data  bms_battery_data_id_1 = {
 	.rbatt_est_ocv_lut	= &rbatt_est_ocv_id_1,
 	.default_rbatt_mohm	= 250,
 	.delta_rbatt_mohm	= 0,
+	.level_ocv_update_stop_begin	= 10,
+	.level_ocv_update_stop_end	= 20,
 };
 
 
@@ -1213,6 +1216,8 @@ struct pm8921_bms_battery_data  bms_battery_data_id_2 = {
 	.rbatt_est_ocv_lut	= &rbatt_est_ocv_id_2,
 	.default_rbatt_mohm	= 250,
 	.delta_rbatt_mohm	= 0,
+	.level_ocv_update_stop_begin	= 10,
+	.level_ocv_update_stop_end	= 20,
 };
 
 static struct htc_battery_cell htc_battery_cells[] = {

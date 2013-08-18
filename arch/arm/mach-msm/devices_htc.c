@@ -216,6 +216,40 @@ int __init parse_tag_cam(const struct tag *tags)
 }
 __tagtable(ATAG_CAM, parse_tag_cam);
 
+int batt_stored_magic_num;
+int batt_stored_soc;
+int batt_stored_ocv_uv;
+int batt_stored_cc_uv;
+unsigned long batt_stored_time_ms;
+
+static int __init parse_tag_stored_batt_data(const struct tag *tags)
+{
+	int find = 0;
+	struct tag *t = (struct tag *)tags;
+
+	for (; t->hdr.size; t = tag_next(t)) {
+		if (t->hdr.tag == ATAG_BATT_DATA) {
+			printk(KERN_DEBUG "find the stored batt data tag\n");
+			find = 1;
+			break;
+		}
+	}
+
+	if (find) {
+		batt_stored_magic_num = t->u.batt_data.magic_num;
+		batt_stored_soc = t->u.batt_data.soc;
+		batt_stored_ocv_uv = t->u.batt_data.ocv;
+		batt_stored_cc_uv = t->u.batt_data.cc;
+		batt_stored_time_ms = t->u.batt_data.currtime;
+		printk(KERN_INFO "batt_data: magic_num=%x, soc=%d, "
+			"ocv_uv=%x, cc_uv=%x, stored_time=%ld\n",
+			batt_stored_magic_num, batt_stored_soc, batt_stored_ocv_uv,
+			batt_stored_cc_uv, batt_stored_time_ms);
+	}
+	return 0;
+}
+__tagtable(ATAG_BATT_DATA, parse_tag_stored_batt_data);
+
 #define ATAG_GRYO_GSENSOR	0x54410020
 unsigned char gyro_gsensor_kvalue[37];
 EXPORT_SYMBOL(gyro_gsensor_kvalue);
