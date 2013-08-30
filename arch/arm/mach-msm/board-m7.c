@@ -3383,7 +3383,7 @@ static struct cm3629_platform_data cm36282_pdata_sk2 = {
 	.model = CAPELLA_CM36282,
 	.ps_select = CM3629_PS1_ONLY,
 	.intr = PM8921_GPIO_PM_TO_SYS(PROXIMITY_INT),
-	.levels = { 12, 14, 77, 566, 1360, 4793, 8101, 13240, 18379, 65535},
+	.levels = { 0xC, 0xE, 0x10, 0x29, 0x53, 0xDE9, 0x17C2, 0x19E4, 0x1C00, 0xFFFF},
 	.golden_adc = 0x1724,
 #ifdef CONFIG_WSENSOR_ENABLE
 	.w_golden_adc = 0x1AE0,
