@@ -74,12 +74,12 @@ static ssize_t vol_wakeup_store(struct device *dev,
 		enable_irq_wake(vol_up_irq);
 		enable_irq_wake(vol_down_irq);
 		set_wakeup = 1;
-		KEY_LOGI("%s:change to wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
+		KEY_LOGD("%s:change to wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
 	} else if ((!wakeup_bitmask) && set_wakeup){
 		disable_irq_wake(vol_up_irq);
 		disable_irq_wake(vol_down_irq);
 		set_wakeup = 0;
-		KEY_LOGI("%s:change to non-wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
+		KEY_LOGD("%s:change to non-wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
 	}
 	mutex_unlock(&wakeup_mutex);
 	return count;
@@ -128,7 +128,7 @@ static void power_key_state_disable_work_func(struct work_struct *dummy)
 {
     setPowerKeyState(0);
 
-    KEY_LOGI("[PWR][STATE]power key pressed outdated\n");
+    KEY_LOGD("[PWR][STATE]power key pressed outdated\n");
 }
 static DECLARE_DELAYED_WORK(power_key_state_disable_work, power_key_state_disable_work_func);
 
@@ -136,30 +136,30 @@ static void handle_power_key_state(unsigned int code, int value)
 {
 	int ret = 0;
 	if (code == KEY_POWER && value == 1) {
-		KEY_LOGI("[PWR][STATE]try to schedule power key pressed due\n");
+		KEY_LOGD("[PWR][STATE]try to schedule power key pressed due\n");
 		ret = schedule_delayed_work(&power_key_state_disable_work, PWRKEY_PRESS_DUE);
 		if (!ret) {
-			KEY_LOGI("[PWR][STATE]Schedule power key pressed due failed, seems already have one, try to cancel...\n");
+			KEY_LOGD("[PWR][STATE]Schedule power key pressed due failed, seems already have one, try to cancel...\n");
 			ret = __cancel_delayed_work(&power_key_state_disable_work);
 			if (!ret) {
 				setPowerKeyState(1);
 				if (schedule_delayed_work(&power_key_state_disable_work, PWRKEY_PRESS_DUE)) {
-					KEY_LOGI("[PWR][STATE]Re-schedule power key pressed due SCCUESS.\n");
-					KEY_LOGI("[PWR][STATE] start count for power key pressed due\n");
+					KEY_LOGD("[PWR][STATE]Re-schedule power key pressed due SCCUESS.\n");
+					KEY_LOGD("[PWR][STATE] start count for power key pressed due\n");
 					setPowerKeyState(1);
 				} else
-					KEY_LOGI("[PWR][STATE]Re-schedule power key pressed due FAILED, reason unknown, give up.\n");
+					KEY_LOGD("[PWR][STATE]Re-schedule power key pressed due FAILED, reason unknown, give up.\n");
 			} else {
-				KEY_LOGI("[PWR][STATE]Cancel scheduled power key due success, now re-schedule.\n");
+				KEY_LOGD("[PWR][STATE]Cancel scheduled power key due success, now re-schedule.\n");
 				if (schedule_delayed_work(&power_key_state_disable_work, PWRKEY_PRESS_DUE)) {
-					KEY_LOGI("[PWR][STATE]Re-schedule power key pressed due SCCUESS.\n");
-					KEY_LOGI("[PWR][STATE] start count for power key pressed due\n");
+					KEY_LOGD("[PWR][STATE]Re-schedule power key pressed due SCCUESS.\n");
+					KEY_LOGD("[PWR][STATE] start count for power key pressed due\n");
 					setPowerKeyState(1);
 				} else
-					KEY_LOGI("[PWR][STATE]Re-schedule power key pressed due FAILED, reason unknown, give up.\n");
+					KEY_LOGD("[PWR][STATE]Re-schedule power key pressed due FAILED, reason unknown, give up.\n");
 			}
 		} else {
-			KEY_LOGI("[PWR][STATE] start count for power key pressed due\n");
+			KEY_LOGD("[PWR][STATE] start count for power key pressed due\n");
 			setPowerKeyState(1);
 		}
 	}
@@ -278,19 +278,19 @@ static DECLARE_DELAYED_WORK(power_key_restart_work, power_key_restart_work_func)
 
 static void power_key_led_on_work_func(struct work_struct *dummy)
 {
-	KEY_LOGI("[PWR] %s in (%x)\n", __func__, power_key_led_requested);
+	KEY_LOGD("[PWR] %s in (%x)\n", __func__, power_key_led_requested);
 	if (power_key_led_requested == 1) {
 		pre_power_key_led_status = 1;
 #ifdef CONFIG_POWER_KEY_CLR_RESET
 		schedule_delayed_work(&power_key_restart_work, PWRKEYKP_DELAY);
 #endif
-		KEY_LOGI("[PWR] change power key led on\n");
+		KEY_LOGD("[PWR] change power key led on\n");
 		pm8xxx_led_current_set_for_key(1);
 #ifdef CONFIG_POWER_KEY_CLR_RESET
 		if(!is_rrm1_mode())
 #endif
 			set_hw_reason(HW_RESET_REASON);
-		KEY_LOGI("[PWR] Show Blocked State -- long press power key\n");
+		KEY_LOGD("[PWR] Show Blocked State -- long press power key\n");
 		show_state_filter(TASK_UNINTERRUPTIBLE);
 	}
 }
@@ -300,9 +300,9 @@ static void power_key_led_off_work_func(struct work_struct *dummy)
 {
 	if (power_key_led_requested) {
 		if (cancel_delayed_work_sync(&power_key_led_on_work)) {
-			KEY_LOGI("[PWR] cancel power key led work successfully(%x)\n", power_key_led_requested);
+			KEY_LOGD("[PWR] cancel power key led work successfully(%x)\n", power_key_led_requested);
 		} else
-			KEY_LOGI("[PWR] cancel power key led work unsuccessfully (%x)\n", power_key_led_requested);
+			KEY_LOGD("[PWR] cancel power key led work unsuccessfully (%x)\n", power_key_led_requested);
 
 		power_key_led_requested = 0;
 	}
@@ -310,7 +310,7 @@ static void power_key_led_off_work_func(struct work_struct *dummy)
 #ifdef CONFIG_POWER_KEY_CLR_RESET
 		cancel_delayed_work_sync(&power_key_restart_work);
 #endif
-		KEY_LOGI("[PWR] change power key led off\n");
+		KEY_LOGD("[PWR] change power key led off\n");
 		pm8xxx_led_current_set_for_key(0);
 		pre_power_key_led_status = 0;
 #ifdef CONFIG_POWER_KEY_CLR_RESET
@@ -328,11 +328,11 @@ static void handle_power_key_led(unsigned int code, int value)
 			return;
 		pre_power_key_status = value;
 		if (value) {
-			KEY_LOGI("[PWR] start count for power key led on\n");
+			KEY_LOGD("[PWR] start count for power key led on\n");
 			schedule_delayed_work(&power_key_led_on_work, PWRKEYLEDON_DELAY);
 			power_key_led_requested = 1;
 		} else {
-			KEY_LOGI("[PWR] start count for power key led off\n");
+			KEY_LOGD("[PWR] start count for power key led off\n");
 			schedule_delayed_work(&power_key_led_off_work, PWRKEYLEDOFF_DELAY);
 		}
 	}
@@ -346,7 +346,7 @@ static void power_key_check_reset_work_func(struct work_struct *dummy)
 {
 	struct gpio_event_input_info *aa = gis;
 	int pocket_mode = 0;
-	KEY_LOGI("[PWR] %s\n", __func__);
+	KEY_LOGD("[PWR] %s\n", __func__);
 	if ((aa->clear_hw_reset)) {
 		if (aa->info.rrm1_mode) {
 			printk(KERN_INFO "[KEY] Power key check in Lab Test RRM1 mode.\n");
@@ -362,7 +362,7 @@ static void power_key_check_reset_work_func(struct work_struct *dummy)
 		}
 	}
 	else {
-		KEY_LOGI("[PWR] No reset  clear function\n");
+		KEY_LOGD("[PWR] No reset  clear function\n");
 	}
 	handle_power_key_reset(KEY_POWER, 1);
 }
@@ -371,13 +371,13 @@ static DECLARE_DELAYED_WORK(power_key_check_reset_work, power_key_check_reset_wo
 static void clear_hw_reset(void)
 {
 	struct gpio_event_input_info *aa = gis;
-	KEY_LOGI("[PWR] %s\n", __func__);
+	KEY_LOGD("[PWR] %s\n", __func__);
 	if ((aa->clear_hw_reset)) {
 		printk(KERN_INFO "[KEY] clear hw reset\n");
 		aa->clear_hw_reset();
 	}
 	else {
-		KEY_LOGI("[PWR] No reset  clear function\n");
+		KEY_LOGD("[PWR] No reset  clear function\n");
 	}
 }
 static int is_rrm1_mode(void)
@@ -388,10 +388,10 @@ static int is_rrm1_mode(void)
 static void power_key_clr_check_work_func(struct work_struct *dummy)
 {
 	if (cancel_delayed_work_sync(&power_key_check_reset_work))
-		KEY_LOGI("[PWR] cancel power key check reset work successfully\n");
+		KEY_LOGD("[PWR] cancel power key check reset work successfully\n");
 
 	else
-		KEY_LOGI("[PWR] cancel power key check reset work unsuccessfully\n");
+		KEY_LOGD("[PWR] cancel power key check reset work unsuccessfully\n");
 
 	wake_unlock(&key_reset_clr_wake_lock);
 }
@@ -402,14 +402,14 @@ static void handle_power_key_reset(unsigned int code, int value)
 	if (code == KEY_POWER) {
 		if (value) {
 			wake_lock_timeout(&key_reset_clr_wake_lock, PWRKEYCHKRST_WAKELOCK_TIMEOUT);
-			KEY_LOGI("[PWR] start count for power key check reset\n");
+			KEY_LOGD("[PWR] start count for power key check reset\n");
 			if (!schedule_delayed_work(&power_key_check_reset_work, PWRKEYCHKRST_DELAY))
-				KEY_LOGI("[PWR] the reset work in already in the queue\n");
+				KEY_LOGD("[PWR] the reset work in already in the queue\n");
 		} else {
-			KEY_LOGI("[PWR] start count for power key clear check\n");
+			KEY_LOGD("[PWR] start count for power key clear check\n");
 
 			if (!schedule_delayed_work(&power_key_clr_check_work, PWRKEYCLRCHK_DELAY))
-				KEY_LOGI("[PWR] the clear work in already in the queue\n");
+				KEY_LOGD("[PWR] the clear work in already in the queue\n");
 		}
 	}
 }
