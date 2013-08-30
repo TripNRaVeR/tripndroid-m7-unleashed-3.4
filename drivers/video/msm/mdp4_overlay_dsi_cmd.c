@@ -495,7 +495,7 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 		return;
 
 	wait_event_interruptible_timeout(vctrl->wait_queue, 1,
-			msecs_to_jiffies(VSYNC_PERIOD * 8));
+			msecs_to_jiffies(VSYNC_PERIOD * 4));
 
 	mdp4_stat.wait4vsync0++;
 }
