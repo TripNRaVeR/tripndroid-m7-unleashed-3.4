@@ -353,10 +353,10 @@ CC		= $(srctree)/scripts/gcc-wrapper.py $(REAL_CC)
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   = -ltcmalloc -fivopts -ftree-vectorize -floop-block -fgraphite-identity -ffloat-store -mfpu=neon-vfpv4
+CFLAGS_MODULE   = -ftree-forwprop -fipa-struct-reorg -ftree-loop-distribution -floop-block -fsingle-precision-constant -mfpu=neon-vfpv4
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -ltcmalloc -fivopts -ftree-vectorize -floop-block -fgraphite-identity -ffloat-store -mfpu=neon-vfpv4
+CFLAGS_KERNEL	= -ftree-forwprop -fipa-struct-reorg -ftree-loop-distribution -floop-block -fsingle-precision-constant -mfpu=neon-vfpv4
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
@@ -375,8 +375,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-		   -funsafe-math-optimizations \
-		   -fsingle-precision-constant
+		   -fno-exceptions \
+		   -fvariable-expansion-in-unroller
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
