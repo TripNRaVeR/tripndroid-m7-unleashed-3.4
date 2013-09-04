@@ -3312,20 +3312,18 @@ static struct i2c_board_info motion_sensor_gsbi_2_info[] = {
 
 	},
 };
-static uint8_t cm3629_mapping_table[] = {
-			0x0, 0x3, 0x6, 0x9, 0xC,
-			0xF, 0x12, 0x15, 0x18, 0x1B,
-			0x1E, 0x21, 0x24, 0x27, 0x2A,
-			0x2D, 0x30, 0x33, 0x36, 0x39,
-			0x3C, 0x3F, 0x43, 0x47, 0x4B,
-			0x4F, 0x53, 0x57, 0x5B, 0x5F,
-			0x63, 0x67, 0x6B, 0x70, 0x75,
-			0x7A, 0x7F, 0x84, 0x89, 0x8E,
-			0x93, 0x98, 0x9D, 0xA2, 0xA8,
-			0xAE, 0xB4, 0xBA, 0xC0, 0xC6,
-			0xCC, 0xD3, 0xDA, 0xE1, 0xE8,
-			0xEF, 0xF6, 0xFF
-};
+static uint8_t cm3629_mapping_table[] = {0x0, 0x3, 0x6, 0x9, 0xC,
+                        0xF, 0x12, 0x15, 0x18, 0x1B,
+                        0x1E, 0x21, 0x24, 0x27, 0x2A,
+                        0x2D, 0x30, 0x33, 0x36, 0x39,
+                        0x3C, 0x3F, 0x43, 0x47, 0x4B,
+                        0x4F, 0x53, 0x57, 0x5B, 0x5F,
+                        0x63, 0x67, 0x6B, 0x70, 0x75,
+                        0x7A, 0x7F, 0x84, 0x89, 0x8E,
+                        0x93, 0x98, 0x9D, 0xA2, 0xA8,
+                        0xAE, 0xB4, 0xBA, 0xC0, 0xC6,
+                        0xCC, 0xD3, 0xDA, 0xE1, 0xE8,
+                        0xEF, 0xF6, 0xFF};
 
 static DEFINE_MUTEX(pl_sensor_lock);
 static struct regulator *pl_reg_l16;
@@ -3394,9 +3392,10 @@ static struct cm3629_platform_data cm36282_pdata_sk2 = {
 	.ps1_thd_set = 0x15,
 	.ps1_thd_no_cal = 0x90,
 	.ps1_thd_with_cal = 0xD,
+	.ps_th_add = 5,
 	.ps_calibration_rule = 1,
-	.ps_conf1_val = CM3629_PS_DR_1_320 | CM3629_PS_IT_1_6T |
-			CM3629_PS1_PERS_3,
+	.ps_conf1_val = CM3629_PS_DR_1_40 | CM3629_PS_IT_1_6T |
+			CM3629_PS1_PERS_2,
 	.ps_conf2_val = CM3629_PS_ITB_1 | CM3629_PS_ITR_1 |
 			CM3629_PS2_INT_DIS | CM3629_PS1_INT_DIS,
 	.ps_conf3_val = CM3629_PS2_PROL_32,
@@ -3405,7 +3404,6 @@ static struct cm3629_platform_data cm36282_pdata_sk2 = {
 	.mapping_table = cm3629_mapping_table,
 	.mapping_size = ARRAY_SIZE(cm3629_mapping_table),
 };
-
 
 static struct i2c_board_info i2c_CM36282_devices_sk2[] = {
 	{
@@ -3430,9 +3428,10 @@ static struct cm3629_platform_data cm36282_pdata_r8 = {
 	.ps1_thd_set = 0x15,
 	.ps1_thd_no_cal = 0x90,
 	.ps1_thd_with_cal = 0xD,
+	.ps_th_add = 5,
 	.ps_calibration_rule = 1,
-	.ps_conf1_val = CM3629_PS_DR_1_320 | CM3629_PS_IT_1_6T |
-			CM3629_PS1_PERS_3,
+	.ps_conf1_val = CM3629_PS_DR_1_40 | CM3629_PS_IT_1_6T |
+			CM3629_PS1_PERS_2,
 	.ps_conf2_val = CM3629_PS_ITB_1 | CM3629_PS_ITR_1 |
 			CM3629_PS2_INT_DIS | CM3629_PS1_INT_DIS,
 	.ps_conf3_val = CM3629_PS2_PROL_32,
