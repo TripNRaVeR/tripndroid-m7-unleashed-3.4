@@ -229,7 +229,7 @@ static struct snd_soc_dai_driver msm_dai_q6_hdmi_hdmi_rx_dai = {
 	.playback = {
 		.rates = SNDRV_PCM_RATE_48000,
 		.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				SNDRV_PCM_FMTBIT_S24_LE),
+				SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE),
 		.channels_min = 2,
 		.channels_max = 6,
 		.rate_max =     48000,
