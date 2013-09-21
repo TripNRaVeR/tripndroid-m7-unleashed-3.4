@@ -1078,7 +1078,8 @@ struct task_struct {
 	unsigned in_execve:1;	
 	unsigned in_iowait:1;
 
-
+	/* task may not gain privileges */
+	unsigned no_new_privs:1;
 	
 	unsigned sched_reset_on_fork:1;
 	unsigned sched_contributes_to_load:1;
@@ -1369,7 +1370,6 @@ static inline pid_t task_pid_vnr(struct task_struct *tsk)
 {
 	return __task_pid_nr_ns(tsk, PIDTYPE_PID, NULL);
 }
-
 
 static inline pid_t task_tgid_nr(struct task_struct *tsk)
 {
