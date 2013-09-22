@@ -257,6 +257,7 @@ static int cpu0_cpufreq_probe(struct platform_device *pdev)
 	}
 
 	of_node_put(np);
+	of_node_put(parent);
 	return 0;
 
 out_free_table:
