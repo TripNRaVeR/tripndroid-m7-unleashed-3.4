@@ -40,6 +40,9 @@
 #include <mach/htc_charger.h>
 #include <mach/htc_battery_cell.h>
 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
+extern unsigned int tdf_fast_charge;
+#endif
 
 #define HTC_BATT_CHG_DIS_BIT_EOC	(1)
 #define HTC_BATT_CHG_DIS_BIT_ID		(1<<1)
@@ -392,7 +395,18 @@ int htc_charger_event_notify(enum htc_charger_event event)
 		htc_batt_schedule_batt_info_update();
 		break;
 	case HTC_CHARGER_EVENT_SRC_USB: 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
+		if (tdf_fast_charge == 1) {
+			printk("[TDF] CHARGER_AC");
+			latest_chg_src = CHARGER_AC;
+		} else {
+			printk("CHARGER_USB");
+			latest_chg_src = CHARGER_USB;
+		}
+#else
+		printk("CHARGER_USB");
 		latest_chg_src = CHARGER_USB;
+#endif
 		htc_batt_schedule_batt_info_update();
 		break;
 	case HTC_CHARGER_EVENT_SRC_AC: 
@@ -413,7 +427,18 @@ int htc_charger_event_notify(enum htc_charger_event event)
 								UNKNOWN_USB_DETECT_DELAY_MS)));
 		break;
 	case HTC_CHARGER_EVENT_SRC_UNKNOWN_USB: 
+#ifdef CONFIG_TRIPNDROID_FRAMEWORK
+		if (tdf_fast_charge == 1) {
+			printk("[TDF] CHARGER_AC");
+			latest_chg_src = CHARGER_AC;
+		} else {
+			printk("CHARGER_UNKNOWN_USB");
+			latest_chg_src = CHARGER_UNKNOWN_USB;
+		}
+#else
+		printk("CHARGER_UNKNOWN_USB");
 		latest_chg_src = CHARGER_UNKNOWN_USB;
+#endif
 		htc_batt_schedule_batt_info_update();
 		break;
 	case HTC_CHARGER_EVENT_OVP:
