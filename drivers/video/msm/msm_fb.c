@@ -54,8 +54,8 @@
 #include "mdp.h"
 #include "mdp4.h"
 
-#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
-#define MSM_FB_NUM	3
+#ifdef CONFIG_FB_MSM_QTR_BUFFER
+#define MSM_FB_NUM	4
 #endif
 
 #ifdef CONFIG_INPUT_CAPELLA_CM3629

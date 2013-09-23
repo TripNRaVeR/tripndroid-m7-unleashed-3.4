@@ -36,8 +36,8 @@
 #include <linux/i2c.h>
 #include <mach/msm_xo.h>
 
-#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
-#define MSM_FB_PRIM_BUF_SIZE (1920 * ALIGN(1080, 32) * 4 * 3)
+#ifdef CONFIG_FB_MSM_QTR_BUFFER
+#define MSM_FB_PRIM_BUF_SIZE (1920 * ALIGN(1080, 32) * 4 * 4)
 #else
 #define MSM_FB_PRIM_BUF_SIZE (1920 * ALIGN(1080, 32) * 4 * 2)
 #endif
