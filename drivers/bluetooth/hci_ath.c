@@ -5,7 +5,7 @@
  *  power management protocol extension to H4 to support AR300x Bluetooth Chip.
  *
  *  Copyright (c) 2009-2010 Atheros Communications Inc.
- *  Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  *  Acknowledgements:
  *  This file is based on hci_h4.c, which was written
@@ -38,32 +38,22 @@
 #include <linux/skbuff.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <linux/of_gpio.h>
+
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
 #include "hci_uart.h"
-#ifdef CONFIG_SERIAL_MSM_HS
-#include <mach/msm_serial_hs.h>
-#endif
 
 unsigned int enableuartsleep = 1;
 module_param(enableuartsleep, uint, 0644);
 /*
  * Global variables
  */
-
-/** Device table */
-static struct of_device_id bluesleep_match_table[] = {
-	{ .compatible = "qca,ar3002_bluesleep" },
-	{}
-};
-
 /** Global state flags */
 static unsigned long flags;
 
-/** Workqueue to respond to change in hostwake line */
-static void wakeup_host_work(struct work_struct *work);
+/** Tasklet to respond to change in hostwake line */
+static struct tasklet_struct hostwake_task;
 
 /** Transmission timer */
 static void bluesleep_tx_timer_expire(unsigned long data);
@@ -99,23 +89,11 @@ struct ath_struct {
 
 	struct sk_buff_head txq;
 	struct work_struct ctxtsw;
-	struct work_struct ws_sleep;
 };
 
-static void hsuart_serial_clock_on(struct tty_struct *tty)
+static void hostwake_interrupt(unsigned long data)
 {
-	struct uart_state *state = tty->driver_data;
-	struct uart_port *port = state->uart_port;
-	BT_DBG("");
-	msm_hs_request_clock_on(port);
-}
-
-static void hsuart_serial_clock_off(struct tty_struct *tty)
-{
-	struct uart_state *state = tty->driver_data;
-	struct uart_port *port = state->uart_port;
-	BT_DBG("");
-	msm_hs_request_clock_off(port);
+	BT_INFO(" wakeup host\n");
 }
 
 static void modify_timer_task(void)
@@ -131,7 +109,6 @@ static int ath_wakeup_ar3k(struct tty_struct *tty)
 {
 	int status = 0;
 	if (test_bit(BT_TXEXPIRED, &flags)) {
-		hsuart_serial_clock_on(tty);
 		BT_INFO("wakeup device\n");
 		gpio_set_value(bsi->ext_wake, 0);
 		msleep(20);
@@ -139,19 +116,6 @@ static int ath_wakeup_ar3k(struct tty_struct *tty)
 	}
 	modify_timer_task();
 	return status;
-}
-
-static void wakeup_host_work(struct work_struct *work)
-{
-	struct ath_struct *ath =
-		container_of(work, struct ath_struct, ws_sleep);
-
-	BT_INFO("wake up host");
-	if (test_bit(BT_SLEEPENABLE, &flags)) {
-		if (test_bit(BT_TXEXPIRED, &flags))
-			hsuart_serial_clock_on(ath->hu->tty);
-	}
-	modify_timer_task();
 }
 
 static void ath_hci_uart_work(struct work_struct *work)
@@ -177,14 +141,11 @@ static void ath_hci_uart_work(struct work_struct *work)
 static irqreturn_t bluesleep_hostwake_isr(int irq, void *dev_id)
 {
 	/* schedule a tasklet to handle the change in the host wake line */
-	struct ath_struct *ath = (struct ath_struct *)dev_id;
-
-	schedule_work(&ath->ws_sleep);
-
+	tasklet_schedule(&hostwake_task);
 	return IRQ_HANDLED;
 }
 
-static int ath_bluesleep_gpio_config(struct ath_struct *ath, int on)
+static int ath_bluesleep_gpio_config(int on)
 {
 	int ret = 0;
 
@@ -232,16 +193,19 @@ static int ath_bluesleep_gpio_config(struct ath_struct *ath, int on)
 	/* Initialize timer */
 	init_timer(&tx_timer);
 	tx_timer.function = bluesleep_tx_timer_expire;
-	tx_timer.data = (u_long)ath->hu;
+	tx_timer.data = 0;
+
+	/* initialize host wake tasklet */
+	tasklet_init(&hostwake_task, hostwake_interrupt, 0);
 
 	if (bsi->irq_polarity == POLARITY_LOW) {
 		ret = request_irq(bsi->host_wake_irq, bluesleep_hostwake_isr,
 				IRQF_DISABLED | IRQF_TRIGGER_FALLING,
-				"bluetooth hostwake", (void *)ath);
+				"bluetooth hostwake", NULL);
 	} else  {
 		ret = request_irq(bsi->host_wake_irq, bluesleep_hostwake_isr,
 				IRQF_DISABLED | IRQF_TRIGGER_RISING,
-				"bluetooth hostwake", (void *)ath);
+				"bluetooth hostwake", NULL);
 	}
 	if (ret  < 0) {
 		BT_ERR("Couldn't acquire BT_HOST_WAKE IRQ");
@@ -257,7 +221,7 @@ static int ath_bluesleep_gpio_config(struct ath_struct *ath, int on)
 	return 0;
 
 free_host_wake_irq:
-	free_irq(bsi->host_wake_irq, (void *)ath);
+	free_irq(bsi->host_wake_irq, NULL);
 delete_timer:
 	del_timer(&tx_timer);
 gpio_ext_wake:
@@ -278,6 +242,11 @@ static int ath_open(struct hci_uart *hu)
 	if (!bsi)
 		return -EIO;
 
+	if (ath_bluesleep_gpio_config(1) < 0) {
+		BT_ERR("HCIATH3K GPIO Config failed");
+		return -EIO;
+	}
+
 	ath = kzalloc(sizeof(*ath), GFP_ATOMIC);
 	if (!ath)
 		return -ENOMEM;
@@ -287,20 +256,13 @@ static int ath_open(struct hci_uart *hu)
 	hu->priv = ath;
 	ath->hu = hu;
 
-	if (ath_bluesleep_gpio_config(ath, 1) < 0) {
-		BT_ERR("HCIATH3K GPIO Config failed");
-		hu->priv = NULL;
-		kfree(ath);
-		return -EIO;
-	}
-
 	ath->cur_sleep = enableuartsleep;
 	if (ath->cur_sleep == 1) {
 		set_bit(BT_SLEEPENABLE, &flags);
 		modify_timer_task();
 	}
 	INIT_WORK(&ath->ctxtsw, ath_hci_uart_work);
-	INIT_WORK(&ath->ws_sleep, wakeup_host_work);
+
 	return 0;
 }
 
@@ -327,13 +289,11 @@ static int ath_close(struct hci_uart *hu)
 
 	cancel_work_sync(&ath->ctxtsw);
 
-	cancel_work_sync(&ath->ws_sleep);
-
-	if (bsi)
-		ath_bluesleep_gpio_config(ath, 0);
-
 	hu->priv = NULL;
 	kfree(ath);
+
+	if (bsi)
+		ath_bluesleep_gpio_config(0);
 
 	return 0;
 }
@@ -423,14 +383,11 @@ static int ath_recv(struct hci_uart *hu, void *data, int count)
 
 static void bluesleep_tx_timer_expire(unsigned long data)
 {
-	struct hci_uart *hu = (struct hci_uart *) data;
-
 	if (!test_bit(BT_SLEEPENABLE, &flags))
 		return;
 	BT_INFO("Tx timer expired\n");
 
 	set_bit(BT_TXEXPIRED, &flags);
-	hsuart_serial_clock_off(hu->tty);
 }
 
 static struct hci_uart_proto athp = {
@@ -443,59 +400,10 @@ static struct hci_uart_proto athp = {
 	.flush = ath_flush,
 };
 
-
-static int bluesleep_populate_dt_pinfo(struct platform_device *pdev)
-{
-	BT_DBG("");
-
-	if (!bsi)
-		return -ENOMEM;
-
-	bsi->host_wake = of_get_named_gpio(pdev->dev.of_node,
-					 "host-wake-gpio", 0);
-	if (bsi->host_wake < 0) {
-		BT_ERR("couldn't find host_wake gpio\n");
-		return -ENODEV;
-	}
-
-	bsi->ext_wake = of_get_named_gpio(pdev->dev.of_node,
-					 "ext-wake-gpio", 0);
-	if (bsi->ext_wake < 0) {
-		BT_ERR("couldn't find ext_wake gpio\n");
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-static int bluesleep_populate_pinfo(struct platform_device *pdev)
-{
-	struct resource *res;
-
-	BT_DBG("");
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-				"gpio_host_wake");
-	if (!res) {
-		BT_ERR("couldn't find host_wake gpio\n");
-		return -ENODEV;
-	}
-	bsi->host_wake = res->start;
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-				"gpio_ext_wake");
-	if (!res) {
-		BT_ERR("couldn't find ext_wake gpio\n");
-		return -ENODEV;
-	}
-	bsi->ext_wake = res->start;
-
-	return 0;
-}
-
-static int __devinit bluesleep_probe(struct platform_device *pdev)
+static int __init bluesleep_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct resource *res;
 
 	BT_DBG("");
 
@@ -505,22 +413,23 @@ static int __devinit bluesleep_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (pdev->dev.of_node) {
-		ret = bluesleep_populate_dt_pinfo(pdev);
-		if (ret < 0) {
-			BT_ERR("Failed to populate device tree info");
-			goto free_bsi;
-		}
-	} else {
-		ret = bluesleep_populate_pinfo(pdev);
-		if (ret < 0) {
-			BT_ERR("Failed to populate device info");
-			goto free_bsi;
-		}
+	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+						"gpio_host_wake");
+	if (!res) {
+		BT_ERR("couldn't find host_wake gpio\n");
+		ret = -ENODEV;
+		goto free_bsi;
 	}
+	bsi->host_wake = res->start;
 
-	BT_DBG("host_wake_gpio: %d ext_wake_gpio: %d",
-				bsi->host_wake, bsi->ext_wake);
+	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+						"gpio_ext_wake");
+	if (!res) {
+		BT_ERR("couldn't find ext_wake gpio\n");
+		ret = -ENODEV;
+		goto free_bsi;
+	}
+	bsi->ext_wake = res->start;
 
 	bsi->host_wake_irq = platform_get_irq_byname(pdev, "host_wake");
 	if (bsi->host_wake_irq < 0) {
@@ -547,12 +456,10 @@ static int bluesleep_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver bluesleep_driver = {
-	.probe = bluesleep_probe,
 	.remove = bluesleep_remove,
 	.driver = {
 		.name = "bluesleep",
 		.owner = THIS_MODULE,
-		.of_match_table = bluesleep_match_table,
 	},
 };
 
@@ -568,13 +475,9 @@ int __init ath_init(void)
 		BT_ERR("HCIATH3K protocol registration failed");
 		return ret;
 	}
-
-	ret = platform_driver_register(&bluesleep_driver);
-	if (ret) {
-		BT_ERR("Failed to register bluesleep driver");
+	ret = platform_driver_probe(&bluesleep_driver, bluesleep_probe);
+	if (ret)
 		return ret;
-	}
-
 	return 0;
 }
 
