@@ -651,6 +651,7 @@ enum cpu_idle_type {
 #define SD_ASYM_PACKING		0x0800  
 #define SD_PREFER_SIBLING	0x1000	
 #define SD_OVERLAP		0x2000	
+#define SD_SHARE_POWERDOMAIN	0x4000  /* Domain members share power domain */
 
 enum powersavings_balance_level {
 	POWERSAVINGS_BALANCE_NONE = 0,  

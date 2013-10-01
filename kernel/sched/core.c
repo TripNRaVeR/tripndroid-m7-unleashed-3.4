@@ -4865,6 +4865,10 @@ int __weak arch_sd_sibling_asym_packing(void)
        return 0*SD_ASYM_PACKING;
 }
 
+int __weak arch_sd_local_flags(int level)
+{
+	return 1*SD_SHARE_POWERDOMAIN;
+}
 
 #ifdef CONFIG_SCHED_DEBUG
 # define SD_INIT_NAME(sd, type)		sd->name = #type
