@@ -435,6 +435,8 @@ static ssize_t store_##file_name					\
 	if (ret != 1)							\
 		return -EINVAL;						\
 									\
+	get_online_cpus();						\
+									\
 	ret = cpufreq_driver->verify(&new_policy);			\
 	if (ret)							\
 		pr_err("cpufreq: Frequency verification failed\n");	\
@@ -442,8 +444,13 @@ static ssize_t store_##file_name					\
 	policy->user_policy.object = new_policy.object;			\
 	ret = __cpufreq_set_policy(policy, &new_policy);		\
 									\
-	return ret ? ret : count;					\
-}
+	if (ret)							\
+		return ret;						\
+	else								\
+		put_online_cpus();					\
+		return count;						\
+									\
+}									\
 
 store_one(scaling_min_freq, min);
 store_one(scaling_max_freq, max);
@@ -495,6 +502,8 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	if (ret != 1)
 		return -EINVAL;
 
+	get_online_cpus();
+
 	if (cpufreq_parse_governor(str_governor, &new_policy.policy,
 						&new_policy.governor))
 		return -EINVAL;
@@ -509,6 +518,7 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	if (ret)
 		return ret;
 	else
+		put_online_cpus();
 		return count;
 }
 
