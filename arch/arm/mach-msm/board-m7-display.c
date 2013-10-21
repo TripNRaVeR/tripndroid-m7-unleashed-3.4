@@ -2567,8 +2567,8 @@ static int __init mipi_video_sharp_init(void)
 	pinfo.pdest = DISPLAY_1;
 	pinfo.wait_cycle = 0;
 	pinfo.bpp = 24;
-	pinfo.width = 61;
-	pinfo.height = 110;
+	pinfo.width = 58;
+	pinfo.height = 103;
 
 	pinfo.lcdc.h_back_porch = 58;
 	pinfo.lcdc.h_front_porch = 100;
@@ -2668,8 +2668,8 @@ static int __init mipi_video_sony_init(void)
 	pinfo.pdest = DISPLAY_1;
 	pinfo.wait_cycle = 0;
 	pinfo.bpp = 24;
-	pinfo.width = 61;
-	pinfo.height = 110;
+	pinfo.width = 58;
+	pinfo.height = 103;
 
 	pinfo.lcdc.h_back_porch = 58;
 	pinfo.lcdc.h_front_porch = 100;
