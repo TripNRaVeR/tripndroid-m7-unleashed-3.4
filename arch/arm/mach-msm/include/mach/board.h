@@ -695,6 +695,7 @@ struct msm_i2c_platform_data {
 	int use_gsbi_shared_mode;
 	void (*msm_i2c_config_gpio)(int iface, int config_type);
 	int share_uart_flag;
+	int keep_ahb_clk_on;
 };
 
 struct msm_i2c_ssbi_platform_data {
