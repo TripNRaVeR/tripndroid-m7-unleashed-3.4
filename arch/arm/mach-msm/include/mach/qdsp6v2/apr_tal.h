@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,7 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 
+/* APR Client IDs */
 #define APR_CLIENT_AUDIO	0x0
 #define APR_CLIENT_VOICE	0x1
 #define APR_CLIENT_MAX	0x2

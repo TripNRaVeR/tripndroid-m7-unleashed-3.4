@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,7 +15,9 @@
 
 #include <linux/input.h>
 
+/* TSC event type index in the containers of the handlers & handles */
 #define TSC_EVENT_TYPE_IND 0
+/* Number of supported event types to be filtered */
 #define MAX_EVENT_TYPE_NUM 1
 
 bool usfcdev_register(
@@ -23,4 +25,4 @@ bool usfcdev_register(
 	bool (*match_cb)(uint16_t, struct input_dev *dev));
 void usfcdev_unregister(uint16_t event_type_ind);
 bool usfcdev_set_filter(uint16_t event_type_ind, bool filter);
-#endif 
+#endif /* __USFCDEV_H__ */
