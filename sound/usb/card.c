@@ -71,10 +71,6 @@
 #include "power.h"
 #include "stream.h"
 
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
-#include <mach/htc_headset_mgr.h>
-#endif
-
 MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("USB Audio");
 MODULE_LICENSE("GPL");
@@ -289,9 +285,6 @@ static int snd_usb_audio_free(struct snd_usb_audio *chip)
 static int snd_usb_audio_dev_free(struct snd_device *device)
 {
 	struct snd_usb_audio *chip = device->device_data;
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
-	headset_ext_detect(USB_NO_HEADSET);
-#endif
 	return snd_usb_audio_free(chip);
 }
 
@@ -345,7 +338,7 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 		return -ENOMEM;
 	}
 
-	init_rwsem(&chip->shutdown_rwsem);
+	mutex_init(&chip->shutdown_mutex);
 	chip->index = idx;
 	chip->dev = dev;
 	chip->card = card;
@@ -429,9 +422,7 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 
 	snd_usb_audio_create_proc(chip);
 	switch_set_state(usbaudiosdev, 1);
-#ifdef CONFIG_SUPPORT_USB_SPEAKER
-	headset_ext_detect(USB_AUDIO_OUT_DGTL);
-#endif
+
 	*rchip = chip;
 	return 0;
 }
@@ -567,11 +558,9 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 		return;
 
 	card = chip->card;
-	down_write(&chip->shutdown_rwsem);
-	chip->shutdown = 1;
-	up_write(&chip->shutdown_rwsem);
-
 	mutex_lock(&register_mutex);
+	mutex_lock(&chip->shutdown_mutex);
+	chip->shutdown = 1;
 	chip->num_interfaces--;
 	if (chip->num_interfaces <= 0) {
 		snd_card_disconnect(card);
@@ -588,9 +577,11 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 			snd_usb_mixer_disconnect(p);
 		}
 		usb_chip[chip->index] = NULL;
+		mutex_unlock(&chip->shutdown_mutex);
 		mutex_unlock(&register_mutex);
 		snd_card_free_when_closed(card);
 	} else {
+		mutex_unlock(&chip->shutdown_mutex);
 		mutex_unlock(&register_mutex);
 	}
 	switch_set_state(usbaudiosdev, 0);
@@ -623,20 +614,16 @@ int snd_usb_autoresume(struct snd_usb_audio *chip)
 {
 	int err = -ENODEV;
 
-	down_read(&chip->shutdown_rwsem);
 	if (!chip->shutdown && !chip->probing)
 		err = usb_autopm_get_interface(chip->pm_intf);
-	up_read(&chip->shutdown_rwsem);
 
 	return err;
 }
 
 void snd_usb_autosuspend(struct snd_usb_audio *chip)
 {
-	down_read(&chip->shutdown_rwsem);
 	if (!chip->shutdown && !chip->probing)
 		usb_autopm_put_interface(chip->pm_intf);
-	up_read(&chip->shutdown_rwsem);
 }
 
 static int usb_audio_suspend(struct usb_interface *intf, pm_message_t message)
@@ -736,15 +723,14 @@ static int __init snd_usb_audio_init(void)
 		return -EINVAL;
 	}
 
-	usbaudiosdev = kzalloc(sizeof(*usbaudiosdev), GFP_KERNEL);
-	usbaudiosdev->name = "usb_audio_class";
+	usbaudiosdev = kzalloc(sizeof(usbaudiosdev), GFP_KERNEL);
+	usbaudiosdev->name = "usb_audio";
 
 	err = switch_dev_register(usbaudiosdev);
 	if (err)
 		pr_err("Usb-audio switch registration failed\n");
 	else
 		pr_debug("usb hs_detected\n");
-
 	return usb_register(&usb_audio_driver);
 }
 
