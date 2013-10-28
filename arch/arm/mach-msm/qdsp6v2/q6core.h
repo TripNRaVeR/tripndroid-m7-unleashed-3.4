@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -49,4 +49,4 @@ int core_req_bus_bandwith(u16 bus_id, u32 ab_bps, u32 ib_bps);
 
 uint32_t core_get_adsp_version(void);
 
-#endif 
+#endif /* __Q6CORE_H__ */
