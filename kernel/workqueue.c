@@ -2973,24 +2973,6 @@ unsigned long get_work_func_of_task_struct(struct task_struct *tsk)
 	return 0;
 }
 
-void show_pending_work_on_gcwq(void)
-{
-	struct work_struct *work;
-	struct worker_pool *pool;
-	unsigned int cpu;
-
-	for_each_gcwq_cpu(cpu) {
-		struct global_cwq *gcwq = get_gcwq(cpu);
-
-		for_each_worker_pool(pool, gcwq) {
-			list_for_each_entry(work, &pool->worklist, entry) {
-				printk("CPU%d pending work : %pf\n", cpu, work->func);
-			}
-		}
-	}
-}
-EXPORT_SYMBOL(show_pending_work_on_gcwq);
-
 static int __init init_workqueues(void)
 {
 	unsigned int cpu;
