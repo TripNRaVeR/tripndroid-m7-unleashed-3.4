@@ -416,6 +416,7 @@ static void cable_detect_handler(struct work_struct *w)
 #ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
 	case DOCK_STATE_MHL:
 		CABLE_INFO("MHL inserted\n");
+		sii9234_power_vote(true);
 		switch_set_state(&dock_switch, DOCK_STATE_MHL);
 		pInfo->accessory_type = DOCK_STATE_MHL;
 #ifdef CONFIG_INTERNAL_CHARGING_SUPPORT
@@ -483,6 +484,7 @@ static void cable_detect_handler(struct work_struct *w)
 			CABLE_INFO("MHL removed\n");
 			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
 			sii9234_disableIRQ();
+			sii9234_power_vote(false);
 			break;
 #endif
 		case DOCK_STATE_USB_HOST:
@@ -722,6 +724,7 @@ static void mhl_status_notifier_func(bool isMHL, int charging_type)
 		pInfo->accessory_type = DOCK_STATE_UNDOCKED;
 		sii9234_disableIRQ();
 		enable_irq(pInfo->idpin_irq);
+		sii9234_power_vote(false);
 		return;
 	} else {
 		mhl_connected = 1;

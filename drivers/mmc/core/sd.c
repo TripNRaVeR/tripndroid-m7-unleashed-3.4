@@ -841,6 +841,7 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	int err = 0, status = 0;
 	u32 cid[4];
 	u32 rocr = 0;
+	u32 retry = 3;
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
@@ -848,13 +849,30 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	
 	mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330, 0);
 
+
 	err = mmc_sd_get_cid(host, ocr, cid, &rocr);
 	if (err)
 		return err;
 
 	if (oldcard) {
-		if (memcmp(cid, oldcard->raw_cid, sizeof(cid)) != 0)
-			return -ENOENT;
+		do {
+			if (memcmp(cid, oldcard->raw_cid, sizeof(cid)) == 0) {
+				break;
+			} else {
+				if (retry) {
+					continue;
+				} else {
+					pr_info("%s: oldcard cid %08x%08x%08x%08x\n",
+						mmc_hostname(oldcard->host),
+						oldcard->raw_cid[0], oldcard->raw_cid[1],
+						oldcard->raw_cid[2], oldcard->raw_cid[3]);
+					pr_info("%s: cid %08x%08x%08x%08x\n",
+						mmc_hostname(oldcard->host),
+						cid[0], cid[1], cid[2], cid[3]);
+					return -ENOENT;
+				}
+			}
+		} while (retry--);
 
 		card = oldcard;
 	} else {
@@ -865,6 +883,7 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 		card->type = MMC_TYPE_SD;
 		memcpy(card->raw_cid, cid, sizeof(card->raw_cid));
 	}
+
 #ifdef CONFIG_MMC_CPRM_SUPPORT
 	printk(KERN_INFO "%s: %s: rocr=[0x%x], ccs=[%d]\n", mmc_hostname(card->host), __func__, rocr, (rocr & 0x40000000) >> 30);
 #endif
@@ -929,7 +948,10 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 
 	err = mmc_send_status(card, &status);
 	printk(KERN_INFO "%s: %s card status : %#x, err = %#x\n", mmc_hostname(host), __func__, status, err);
-
+	pr_info("%s: cid %08x%08x%08x%08x\n",
+		mmc_hostname(card->host),
+		card->raw_cid[0], card->raw_cid[1],
+		card->raw_cid[2], card->raw_cid[3]);
 	host->card = card;
 
 	return 0;

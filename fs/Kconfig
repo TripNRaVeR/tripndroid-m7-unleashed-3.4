@@ -297,8 +297,12 @@ config EXFAT_VERSION
 	default "target/htc.d/htc"
 
 config FSYNC_DEBUG
-	string "Debug EXT4 fsync"
+	bool
 	depends on EXT4_FS
 	default n
+
+config ASYNC_FSYNC
+	bool
+	default y
 
 endmenu

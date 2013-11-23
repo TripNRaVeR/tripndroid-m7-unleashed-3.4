@@ -127,6 +127,9 @@
 #ifdef CONFIG_SERIAL_CIR
 #include <linux/htc_cir.h>
 #endif
+#ifdef CONFIG_TOUCHSCREEN_HIMAX
+#include <linux/himax_852xD.h>
+#endif
 
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
@@ -992,101 +995,101 @@ static struct pm8921_charger_batt_param chg_batt_params[] = {
 };
 
 static struct single_row_lut fcc_temp_id_1 = {
-	.x		= {-20,-10, 0, 10, 20, 30, 40},
-	.y		= {2150, 2250, 2275, 2290, 2300, 2300, 2300},
-	.cols	= 7
+	.x    = {-20,-10, 0, 10, 20, 30, 40},
+	.y    = {2150, 2250, 2275, 2280, 2280, 2300, 2300},
+	.cols = 7
 };
 
 static struct single_row_lut fcc_sf_id_1 = {
-	.x	= {0},
-	.y	= {100},
-	.cols	= 1,
+	.x    = {0},
+	.y    = {100},
+	.cols = 1,
 };
 
 static struct sf_lut pc_sf_id_1 = {
-	.rows		= 1,
-	.cols		= 1,
+	.rows        = 1,
+	.cols        = 1,
 	
-	.row_entries		= {0},
-	.percent	= {100},
-	.sf		= {
-			{100}
+	.row_entries = {0},
+	.percent     = {100},
+	.sf          = {
+					{100}
 	},
 };
 
 static struct sf_lut rbatt_est_ocv_id_1 = {
-	.rows	= 1,
-	.cols		= 2,
-	.row_entries		= {20, 40},
-	.percent	= {100},
-	.sf		= {
-			{290, 190}
+	.rows        = 1,
+	.cols        = 2,
+	.row_entries = {20, 40},
+	.percent     = {100},
+	.sf          = {
+					{290, 190}
 	},
 };
 
 static struct sf_lut rbatt_sf_id_1 = {
-	.rows		= 19,
-	.cols		= 7,
-
-	.row_entries	= {-20,-10, 0, 10, 20, 30, 40},
-	.percent	= {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10},
-	.sf		= {
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
-		{219,180,152,133,64,48,36},
+	.rows        = 19,
+	.cols        = 7,
+	
+	.row_entries = {-20,-10, 0, 10, 20, 30, 40},
+	.percent     = {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10},
+	.sf          = {
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
+					{229,181,152,138,111,111,111},
 	}
 };
 
 static struct pc_temp_ocv_lut  pc_temp_ocv_id_1 = {
-	.rows		= 29,
-	.cols		= 7,
-	.temp		= {-20,-10, 0, 10, 20, 30, 40},
-	.percent	= {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-	.ocv		= {
+	.rows    = 29,
+	.cols    = 7,
+	.temp    = {-20,-10, 0, 10, 20, 30, 40},
+	.percent = {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+	.ocv     = {
 				{4316,4315,4312,4310,4310,4300,4300},
 				{4262,4271,4270,4270,4268,4266,4266},
 				{4200,4213,4213,4213,4212,4211,4211},
-				{4146,4159,4160,4160,4159,4156,4157},
+				{4146,4159,4160,4160,4159,4158,4157},
 				{4097,4109,4109,4108,4107,4106,4105},
 				{4039,4063,4063,4062,4059,4058,4057},
-				{3981,4005,4011,4014,4013,4013,4012},
-				{3937,3956,3971,3975,3971,3971,3972},
-				{3898,3907,3916,3920,3919,3918,3921},
-				{3865,3870,3871,3873,3873,3872,3872},
-				{3839,3842,3844,3842,3842,3843,3844},
-				{3819,3820,3822,3824,3823,3822,3823},
-				{3806,3805,3805,3806,3804,3804,3804},
-				{3793,3790,3790,3787,3784,3784,3781},
-				{3777,3779,3779,3777,3768,3768,3764},
-				{3757,3762,3762,3762,3749,3749,3745},
-				{3734,3728,3728,3735,3723,3723,3722},
-				{3715,3704,3703,3701,3696,3687,3682},
-				{3693,3693,3693,3691,3689,3681,3675},
-				{3678,3664,3672,3677,3675,3661,3658},
-				{3663,3640,3651,3662,3661,3642,3642},
-				{3648,3616,3630,3647,3647,3625,3625},
-				{3633,3592,3609,3632,3631,3600,3609},
-				{3618,3569,3588,3618,3618,3580,3592},
-				{3588,3526,3494,3494,3484,3474,3474},
-				{3559,3483,3380,3380,3383,3380,3355},
-				{3529,3441,3276,3246,3236,3236,3236},
-				{3499,3398,3173,3122,3122,3118,3118},
+				{3981,4005,4011,4011,4011,4011,4012},
+				{3937,3956,3971,3975,3971,3971,3971},
+				{3898,3907,3916,3920,3920,3920,3920},
+				{3865,3870,3872,3872,3872,3872,3872},
+				{3839,3842,3844,3844,3844,3844,3844},
+				{3819,3820,3822,3823,3823,3823,3823},
+				{3806,3805,3805,3805,3804,3804,3804},
+				{3793,3790,3790,3787,3784,3784,3784},
+				{3777,3777,3777,3777,3768,3768,3768},
+				{3757,3762,3762,3762,3749,3749,3749},
+				{3734,3728,3728,3725,3723,3723,3723},
+				{3715,3704,3703,3701,3701,3701,3701},
+				{3693,3693,3693,3691,3691,3691,3691},
+				{3682,3681,3681,3681,3681,3681,3681},
+				{3670,3669,3669,3669,3669,3669,3669},
+				{3655,3655,3655,3655,3655,3655,3655},
+				{3641,3640,3640,3640,3640,3640,3640},
+				{3618,3618,3618,3618,3618,3618,3618},
+				{3603,3558,3558,3556,3556,3556,3556},
+				{3588,3526,3494,3490,3490,3490,3490},
+				{3568,3496,3411,3407,3407,3407,3407},
+				{3535,3449,3297,3271,3271,3271,3271},
 				{3469,3355,3069,3000,3000,3000,3000}
 	}
 };
@@ -1101,107 +1104,105 @@ struct pm8921_bms_battery_data  bms_battery_data_id_1 = {
 	.rbatt_est_ocv_lut	= &rbatt_est_ocv_id_1,
 	.default_rbatt_mohm	= 250,
 	.delta_rbatt_mohm	= 0,
-	.level_ocv_update_stop_begin	= 10,
-	.level_ocv_update_stop_end	= 20,
 };
 
 
 static struct single_row_lut fcc_temp_id_2 = {
-	.x		= {-20,-10, 0, 10, 20, 30, 40},
-	.y		= {2190, 2265, 2300, 2310, 2310, 2320, 2320},
-	.cols	= 7
+	.x    = {-20,-10, 0, 10, 20, 30, 40},
+	.y    = {2190, 2265, 2290, 2300, 2300, 2300, 2300},
+	.cols = 7
 };
 
 static struct single_row_lut fcc_sf_id_2 = {
-	.x		= {0},
-	.y		= {100},
-	.cols	= 1
+	.x    = {0},
+	.y    = {100},
+	.cols = 1
 };
 
 static struct sf_lut pc_sf_id_2 = {
-	.rows		= 1,
-	.cols		= 1,
-        
-	.row_entries	= {0},
-	.percent	= {100},
-	.sf			= {
+	.rows        = 1,
+	.cols        = 1,
+	
+	.row_entries = {0},
+	.percent     = {100},
+	.sf          = {
 				{100}
 	}
 };
 
 static struct sf_lut rbatt_est_ocv_id_2 = {
-	.rows	= 1,
-	.cols		= 2,
-	.row_entries		= {20, 40},
-	.percent	= {100},
-	.sf		= {
-			{290, 190}
+	.rows        = 1,
+	.cols        = 2,
+	.row_entries = {20, 40},
+	.percent     = {100},
+	.sf          = {
+				{290, 190}
 	},
 };
 
 static struct sf_lut rbatt_sf_id_2 = {
-	.rows		= 19,
-	.cols           = 7,
-
-	.row_entries	= {-20,-10, 0, 10, 20, 30, 40},
-	.percent	= {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10},
-	.sf		= {
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
-		{226,178,155,129,80,46,30},
+	.rows        = 19,
+	.cols        = 7,
+	
+	.row_entries = {-20,-10, 0, 10, 20, 30, 40},
+	.percent     = {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10},
+	.sf          = {
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
+					{226,171,157,140,123,123,123},
 	}
 };
 
 static struct pc_temp_ocv_lut  pc_temp_ocv_id_2 = {
-	.rows		= 29,
-	.cols		= 7,
-	.temp		= {-20,-10, 0, 10, 20, 30, 40},
-	.percent	= {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
-	.ocv		= {
+	.rows    = 29,
+	.cols    = 7,
+	.temp    = {-20,-10, 0, 10, 20, 30, 40},
+	.percent = {100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+	.ocv     = {
 				{4315,4312,4312,4310,4310,4300,4300},
 				{4257,4264,4264,4264,4264,4264,4264},
-				{4189,4201,4206,4208,4208,4208,4208},
+				{4189,4201,4208,4208,4208,4208,4208},
 				{4130,4144,4151,4154,4154,4154,4154},
 				{4078,4095,4099,4102,4102,4102,4102},
-				{4008,4035,4051,4057,4056,4055,4055},
+				{4008,4035,4055,4055,4055,4055,4055},
 				{3963,3982,3995,4003,4006,4006,4006},
-				{3922,3943,3958,3965,3968,3968,3878},
-				{3884,3897,3917,3929,3930,3931,3931},
-				{3854,3858,3865,3871,3871,3871,3873},
-				{3832,3830,3834,3839,3840,3840,3842},
-				{3817,3817,3817,3815,3815,3815,3820},
-				{3806,3801,3802,3802,3802,3802,3801},
-				{3796,3794,3789,3788,3788,3788,3787},
-				{3786,3786,3784,3781,3780,3773,3768},
-				{3773,3774,3775,3771,3763,3751,3748},
-				{3757,3757,3751,3745,3740,3731,3726},
-				{3737,3727,3712,3702,3696,3688,3683},
-				{3714,3701,3692,3689,3688,3681,3675},
-				{3707,3693,3678,3675,3674,3662,3658},
-				{3700,3686,3664,3660,3659,3643,3640},
-				{3692,3678,3650,3645,3645,3625,3623},
-				{3685,3670,3636,3630,3630,3606,3605},
-				{3678,3662,3623,3616,3616,3587,3587},
-				{3624,3605,3538,3504,3504,3470,3470},
-				{3571,3548,3453,3400,3400,3352,3352},
-				{3518,3491,3368,3282,3257,3235,3235},
-				{3465,3434,3283,3171,3171,3117,3117},
+				{3922,3943,3958,3965,3968,3968,3968},
+				{3884,3897,3917,3929,3931,3931,3931},
+				{3854,3858,3865,3871,3871,3871,3871},
+				{3832,3832,3834,3839,3840,3840,3840},
+				{3817,3817,3817,3815,3817,3817,3817},
+				{3806,3802,3802,3802,3801,3801,3801},
+				{3796,3794,3789,3788,3786,3786,3786},
+				{3786,3786,3784,3781,3772,3772,3772},
+				{3773,3772,3772,3760,3757,3757,3757},
+				{3757,3757,3751,3745,3737,3737,3737},
+				{3737,3727,3712,3712,3712,3712,3712},
+				{3714,3701,3692,3689,3689,3689,3689},
+				{3709,3696,3682,3679,3679,3679,3679},
+				{3703,3689,3671,3667,3667,3667,3667},
+				{3696,3682,3657,3652,3652,3652,3652},
+				{3689,3674,3643,3638,3638,3638,3638},
+				{3678,3662,3623,3616,3616,3616,3616},
+				{3651,3633,3580,3560,3560,3560,3560},
+				{3624,3605,3538,3495,3495,3495,3495},
+				{3587,3565,3478,3426,3426,3426,3426},
+				{3528,3503,3385,3304,3304,3304,3304},
 				{3411,3377,3198,3059,3000,3000,3000}
 	}
 };
@@ -1216,8 +1217,6 @@ struct pm8921_bms_battery_data  bms_battery_data_id_2 = {
 	.rbatt_est_ocv_lut	= &rbatt_est_ocv_id_2,
 	.default_rbatt_mohm	= 250,
 	.delta_rbatt_mohm	= 0,
-	.level_ocv_update_stop_begin	= 10,
-	.level_ocv_update_stop_end	= 20,
 };
 
 static struct htc_battery_cell htc_battery_cells[] = {
@@ -2203,6 +2202,173 @@ static struct slim_device m7_slim_tabla20 = {
 	},
 };
 
+#ifdef CONFIG_TOUCHSCREEN_HIMAX
+static int ts_himax_init(struct device *dev, struct himax_i2c_platform_data *pdata)
+{
+	return 0;
+}
+
+static int ts_himax_enable(struct device *dev, struct himax_i2c_platform_data *pdata)
+{
+	return 0;
+}
+
+static int ts_himax_disable(struct device *dev, struct himax_i2c_platform_data *pdata)
+{
+	return 0;
+}
+
+static void ts_himax_exit(struct device *dev, struct himax_i2c_platform_data *pdata)
+{
+}
+
+static int ts_himax_power(int on)
+{
+	return 0;
+}
+
+static void ts_himax_reset(void)
+{
+	printk(KERN_INFO "%s():\n", __func__);
+	gpio_direction_output(TP_RSTz, 0);
+	mdelay(20);
+	gpio_direction_output(TP_RSTz, 1);
+	mdelay(50);
+}
+
+struct himax_i2c_platform_data_config_type28 evt_config_type28[] = {
+	{
+		.version = 0x04,
+		.common  = 1,
+		.c1    = { 0x37, 0xFF, 0x08, 0xFF, 0x08},
+		.c2    = { 0x3F, 0x00},
+		.c3    = { 0x62, 0x01, 0x00, 0x01, 0x20, 0x01, 0x20, 0x00, 0x00, 0x11, 0x11},
+		.c4    = { 0x63, 0x01, 0x00, 0x01, 0x20, 0x01, 0x20, 0x00, 0x00, 0x10, 0x10},
+		.c5    = { 0x64, 0x31, 0x00, 0x31, 0x20, 0x31, 0x20, 0x00, 0x00, 0x01, 0x00},
+		.c6    = { 0x65, 0x31, 0x00, 0x31, 0x20, 0x31, 0x20, 0x00, 0x00, 0x00, 0x00},
+		.c7    = { 0x66, 0x31, 0x00, 0x31, 0x20, 0x31, 0x20, 0x00, 0x00, 0x00, 0x01},
+		.c8    = { 0x67, 0x31, 0x00, 0x31, 0x20, 0x31, 0x20, 0x00, 0x00, 0x01, 0x01},
+		.c9    = { 0x68, 0x31, 0x00, 0x31, 0x20, 0x31, 0x20, 0x00, 0x00, 0x00, 0x22},
+		.c10   = { 0x69, 0x31, 0x00, 0x31, 0x02, 0x31, 0x02, 0x00, 0x00, 0x22, 0x22},
+		.c11   = { 0x6A, 0x30, 0x00, 0x30, 0x02, 0x30, 0x02, 0x00, 0x00, 0x22, 0x22},
+		.c12   = { 0x6B, 0x31, 0x00, 0x31, 0x02, 0x31, 0x02, 0x00, 0x00, 0x22, 0x22},
+		.c13   = { 0x6C, 0x31, 0x00, 0x31, 0x02, 0x31, 0x02, 0x00, 0x00, 0x00, 0x00},
+		.c14   = { 0x6D, 0x31, 0x00, 0x31, 0x02, 0x31, 0x02, 0x00, 0x00, 0x00, 0x00},
+		.c15   = { 0x6E, 0x31, 0x00, 0x31, 0x02, 0x31, 0x02, 0x00, 0x00, 0x00, 0x00},
+		.c16   = { 0x6F, 0x31, 0x00, 0x31, 0x02, 0x31, 0x02, 0x00, 0x00, 0x00, 0x00},
+		.c17   = { 0x70, 0x30, 0x00, 0x30, 0x12, 0x30, 0x12, 0x00, 0x00, 0x00, 0x00},
+		.c18   = { 0x7B, 0x03},
+		.c19   = { 0x7C, 0x00, 0xD8, 0x0C},
+		.c20   = { 0x7F, 0x00, 0x04, 0x0A, 0x0A, 0x04, 0x00, 0x00, 0x00},
+		.c21   = { 0xA4, 0x94, 0x62, 0x94, 0x86},
+		.c22   = { 0xB4, 0x07, 0x01, 0x01, 0x01, 0x01, 0x02, 0x07, 0x02, 0x07, 0x02,
+			   0x07, 0x02, 0x07, 0x00},
+		.c23   = { 0xB9, 0x01, 0x36},
+		.c24   = { 0xBA, 0x00},
+		.c25   = { 0xBB, 0x00},
+		.c26   = { 0xBC, 0x08, 0x00, 0x00, 0x00},
+		.c27   = { 0xBD, 0x05, 0x0C},
+		.c28   = { 0xC2, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		.c29   = { 0xC5, 0x0C, 0x19, 0x00, 0x10, 0x1C, 0x1E, 0x0B, 0x1A, 0x08, 0x16},
+		.c30   = { 0xC6, 0x13, 0x10, 0x1D},
+		.c31   = { 0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x1C,
+			   0x1D, 0x1D, 0x1B, 0x1B, 0x18, 0x18, 0x15, 0x15, 0x13, 0x13,
+			   0x12, 0x12, 0x0F, 0x0F, 0x1A, 0x1A, 0x1E, 0x1E, 0x19, 0x19,
+			   0x17, 0x17, 0x16, 0x16, 0x11, 0x11, 0x10, 0x10, 0x14, 0x14,
+			   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			   0x00, 0x00, 0x00, 0x00},
+		.c32   = { 0xCB, 0x01, 0xF5, 0xFF, 0xFF, 0x01, 0x00, 0x05, 0x00, 0x4F, 0x00,
+			   0x00, 0x00},
+		.c33   = { 0xD0, 0x06, 0x01},
+		.c34   = { 0xD3, 0x06, 0x01},
+		.c35   = { 0xD5, 0xA5, 0xA5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			   0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		.c36   = { 0x40, 0x04, 0x5A,
+			   0x5F, 0x02, 0xF0, 0x13, 0x00, 0x00,
+			   0x38, 0x0C, 0x0A, 0x12, 0x0A, 0x0A, 0x0A, 0x1F, 0x16, 0x16,
+			   0x24, 0x18, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			   0x00, 0x00},
+		.c37   = { 0x40, 0xB4, 0x0F, 0xF0, 0x83, 0x84, 0x00,
+			   0x40, 0x28, 0x0F, 0x0F, 0x83, 0x3C, 0x00, 0x00,
+			   0x11, 0x00, 0x00, 0x00,
+			   0x0F, 0x18, 0x00, 0x12, 0x00, 0x00,
+			   0x10, 0x02, 0x3C, 0x64, 0x00, 0x00},
+		.c38   = { 0x40, 0x18, 0x27, 0x27, 0x02, 0x14, 0x00, 0x00, 0x00,
+			   0x04, 0x03, 0x12, 0x07, 0x07, 0x00, 0x00, 0x00},
+		.c39   = { 0x40, 0x20, 0x34, 0x05, 0x00, 0x00, 0xD8, 0x0C, 0x00, 0x00, 0x42,
+			   0x03, 0x11, 0x00, 0x00, 0x00, 0x00,
+			   0x10, 0x02, 0x80, 0x00, 0x00, 0x00, 0x00, 0x0C},
+		.c40   = { 0x40, 0x02, 0x00, 0x0F, 0x0C, 0x00, 0x00, 0x00, 0x00,
+			   0xA0, 0x82, 0x1E, 0x00,
+			   0x1A, 0x10, 0xA0, 0x28,
+			   0x04, 0x4E, 0x0C, 0x30, 0x07, 0x3C},
+		.c41   = { 0x40, 0x00, 0x94, 0x02, 0x7D, 0x80, 0x61, 0x12, 0x03, 0xE6, 0x09,
+			   0x80, 0x84, 0xFC, 0x0C,
+			   0x01, 0x15, 0x04, 0xAB, 0x86, 0x1E, 0x00, 0x05, 0xC3, 0x0E,
+			   0x0B, 0x8B, 0xC1, 0x00},
+		.c42   = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		.c43_1 = { 0x40, 0x18, 0x27, 0xFF, 0xFF, 0x17, 0x25, 0xFF, 0xFF, 0x16, 0x26,
+			   0x12, 0xFF, 0x15, 0x24, 0x11, 0xFF, 0x00, 0x29, 0x10, 0xFF,
+			   0x01, 0x22, 0x0F, 0xFF, 0x03, 0x23, 0x0D, 0xFF, 0x02, 0x21,
+			   0x0E},
+		.c43_2 = { 0x40, 0xFF, 0xFF, 0x20, 0x0C, 0xFF, 0x04, 0x1F, 0x0A, 0xFF,
+			   0x05, 0x1B, 0x09, 0xFF, 0x06, 0x1E, 0x0B, 0xFF, 0x19, 0x1A,
+			   0x08, 0xFF, 0x07, 0x1C, 0x13, 0xFF, 0x28, 0x1D, 0x14, 0xFF},
+		.c44_1 = { 0x40, 0xA3, 0x00, 0x20, 0x00, 0x13, 0x1E, 0x32, 0x00, 0x00, 0x00,
+			   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			   0x56},
+		.c44_2 = { 0x40, 0x02, 0x12, 0x02, 0x00, 0x04},
+		.c45   = { 0x40, 0x00, 0x00},
+	},
+};
+
+struct himax_i2c_platform_data evt_ts_himax_data = {
+	.slave_addr = 0x90,
+	.abs_x_min = 0,
+	.abs_x_max = 1620,
+	.abs_y_min = 0,
+	.abs_y_max = 2880,
+	.abs_pressure_min = 0,
+	.abs_pressure_max = 200,
+	.abs_width_min = 0,
+	.abs_width_max = 200,
+	.gpio_irq = TP_ATTz,
+	.version = 0x00,
+	.tw_id = 0,
+	.event_htc_enable = 0,
+	.cable_config = { 0x90, 0x00},
+	.powerOff3V3 = 0,
+	.support_htc_event = 0,
+	.screenWidth = 1080,
+	.screenHeight = 1920,
+	.ID0 = "JTouch",
+	.ID1 = "N/A",
+	.ID2 = "YFO",
+	.ID3 = "N/A",
+	.reset = ts_himax_reset,
+	.power = ts_himax_power,
+	.type28 = evt_config_type28,
+	.type28_size = sizeof(evt_config_type28),
+	.init = ts_himax_init,
+	.enable = ts_himax_enable,
+	.disable = ts_himax_disable,
+	.exit = __devexit_p(ts_himax_exit),
+	.gpio_reset = TP_RSTz,
+
+	.power_keep_on = 1,
+};
+
+static struct i2c_board_info himax_i2c_gsbi3_info[] = {
+	{
+		I2C_BOARD_INFO(HIMAX8528_NAME, 0x90 >> 1),
+		.platform_data = &evt_ts_himax_data,
+		.irq = MSM_GPIO_TO_INT(TP_ATTz)
+	},
+};
+#endif
+
 static struct synaptics_virtual_key m7_vk_data[] = {
 	{
 		.index = 1,
@@ -2291,6 +2457,8 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.tw_pin_mask = 0x0088,
 		.sensor_id = SENSOR_ID_CHECKING_EN | 0x0,
 		.psensor_detection = 1,
+		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x00, 0x08, 0x00, 0x7F, 0x03, 0x1E,
@@ -2352,6 +2520,8 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.tw_pin_mask = 0x0088,
 		.sensor_id = SENSOR_ID_CHECKING_EN | 0x80,
 		.psensor_detection = 1,
+		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x01, 0x08, 0x00, 0x7F, 0x03, 0x1E,
@@ -2413,6 +2583,8 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.tw_pin_mask = 0x0088,
 		.sensor_id = SENSOR_ID_CHECKING_EN | 0x08,
 		.psensor_detection = 1,
+		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x02, 0x08, 0x00, 0x7F, 0x03, 0x1E,
@@ -2475,6 +2647,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.sensor_id = SENSOR_ID_CHECKING_EN | 0x0,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x00, 0x05, 0x00, 0x7F, 0x03, 0x1E,
@@ -2538,6 +2711,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.sensor_id = SENSOR_ID_CHECKING_EN | 0x80,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x01, 0x05, 0x00, 0x7F, 0x03, 0x1E,
@@ -2601,6 +2775,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.sensor_id = SENSOR_ID_CHECKING_EN | 0x08,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x02, 0x05, 0x00, 0x7F, 0x03, 0x1E,
@@ -2666,6 +2841,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.multitouch_calibration = 1,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x00, 0x02, 0x00, 0x7F, 0x03, 0x1E,
@@ -2731,6 +2907,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.multitouch_calibration = 1,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x01, 0x02, 0x00, 0x7F, 0x03, 0x1E,
@@ -2796,6 +2973,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.multitouch_calibration = 1,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x02, 0x02, 0x00, 0x7F, 0x03, 0x1E,
@@ -2861,6 +3039,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.multitouch_calibration = 1,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0x02, 0x00, 0x00, 0x7F, 0x03, 0x1E,
@@ -2924,6 +3103,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.tw_pin_mask = 0x0088,
 		.psensor_detection = 1,
 		.reduce_report_level = {60, 60, 50, 0, 0},
+		.block_touch_time_near = 200,
 		.virtual_key = m7_vk_data,
 		.lpm_power = synaptics_power_LPM,
 		.config = {0x33, 0x32, 0xFF, 0x01, 0x04, 0x7F, 0x03, 0x14,
@@ -3419,6 +3599,7 @@ static struct cm3629_platform_data cm36282_pdata_sk2 = {
 	.ps_select = CM3629_PS1_ONLY,
 	.intr = PM8921_GPIO_PM_TO_SYS(PROXIMITY_INT),
 	.levels = { 0xC, 0xE, 0x4D, 0x1F4, 0x56E, 0x12B9, 0x1FA5, 0x33B8, 0x47CB, 0xFFFF},
+	.correction = {100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000},
 	.golden_adc = 0x1724,
 #ifdef CONFIG_WSENSOR_ENABLE
 	.w_golden_adc = 0x1AE0,
@@ -3429,7 +3610,7 @@ static struct cm3629_platform_data cm36282_pdata_sk2 = {
 	.ps1_thd_set = 0x15,
 	.ps1_thd_no_cal = 0x90,
 	.ps1_thd_with_cal = 0xD,
-	.ps_th_add = 5,
+	.ps_th_add = 10,
 	.ps_calibration_rule = 1,
 	.ps_conf1_val = CM3629_PS_DR_1_40 | CM3629_PS_IT_1_6T |
 			CM3629_PS1_PERS_2,
@@ -3455,6 +3636,7 @@ static struct cm3629_platform_data cm36282_pdata_r8 = {
 	.ps_select = CM3629_PS1_ONLY,
 	.intr = PM8921_GPIO_PM_TO_SYS(PROXIMITY_INT),
 	.levels = { 0x8, 0x14, 0x1E, 0xC8, 0x190, 0x9C4, 0xE68, 0x19BD, 0x2513, 0xFFFF},
+	.correction = {100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000},
 	.golden_adc = 0xA7D,
 #ifdef CONFIG_WSENSOR_ENABLE
 	.w_golden_adc = 0x1AE0,
@@ -3465,7 +3647,7 @@ static struct cm3629_platform_data cm36282_pdata_r8 = {
 	.ps1_thd_set = 0x15,
 	.ps1_thd_no_cal = 0x90,
 	.ps1_thd_with_cal = 0xD,
-	.ps_th_add = 5,
+	.ps_th_add = 10,
 	.ps_calibration_rule = 1,
 	.ps_conf1_val = CM3629_PS_DR_1_40 | CM3629_PS_IT_1_6T |
 			CM3629_PS1_PERS_2,
@@ -4618,7 +4800,9 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq_stub_codec,
 	&apq_voice,
 	&apq_voip,
+#ifdef CONFIG_AUDIO_LOW_LATENCY
 	&apq_lpa_pcm,
+#endif
 	&apq_pcm_hostless,
 	&apq_cpudai_afe_01_rx,
 	&apq_cpudai_afe_01_tx,
@@ -5158,6 +5342,17 @@ static void __init register_i2c_devices(void)
 					continue;
 				}
 			}
+			if (i == 0 && ((skuid & 0xFF) == 0x35)) {
+				pr_info("[TP] Himax 2nd source\n");
+#ifdef CONFIG_TOUCHSCREEN_HIMAX
+				m7_i2c_devices[i].info =  himax_i2c_gsbi3_info;
+				m7_i2c_devices[i].len = ARRAY_SIZE(himax_i2c_gsbi3_info);
+#endif
+				i2c_register_board_info(APQ_8064_GSBI3_QUP_I2C_BUS_ID,
+						m7_i2c_devices[i].info,
+						m7_i2c_devices[i].len);
+				continue;
+			}
 			i2c_register_board_info(m7_i2c_devices[i].bus,
 						m7_i2c_devices[i].info,
 						m7_i2c_devices[i].len);
@@ -5370,7 +5565,6 @@ static void __init m7_common_init(void)
 	m7_init_mmc();
 
 	m7_wifi_init();
-
 
 	pr_info("%s: Add MDM2 device\n", __func__);
 	mdm_8064_device.dev.platform_data = &mdm_platform_data;

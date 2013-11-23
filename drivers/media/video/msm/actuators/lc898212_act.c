@@ -15,7 +15,9 @@
 #include "msm_camera_i2c.h"
 #include <mach/gpio.h>
 
-#define	LC898212_TOTAL_STEPS_NEAR_TO_FAR			  30 
+#define	LC898212_TOTAL_STEPS_NEAR_TO_FAR			  20 
+#define	LC898212_STEP_NEAR_10CM			  18
+#define	LC898212_STEP_FAR			  2
 #define LC898212_TOTAL_STEPS_NEAR_TO_FAR_RAWCHIP_AF                        256 
 
 #define REG_VCM_I2C_ADDR			0xe4
@@ -26,6 +28,10 @@
 #define DEFAULT_OFFSET 0x80
 #define DEFAULT_INFINITY 0x7000
 #define DEFAULT_MACRO -0x7000
+
+int16_t lc898212_kernel_step_table[LC898212_TOTAL_STEPS_NEAR_TO_FAR+1]
+	= {0x4F7F, 0x4C1F, 0x48C0, 0x4560, 0x4201, 0x3FBF, 0x3D7D, 0x3AA8, 0x37D3, 0x31B6, 0x2B9A, 0x2480,
+		0x1D66, 0x151D, 0x0CD4, 0xFF8D, 0xF40E, 0xEC93, 0xE519, 0xD398, 0xC218};
 
 
 DEFINE_MUTEX(lc898212_act_mutex);
@@ -95,44 +101,7 @@ static void lc898212_poweroff_af(void)
 	gpio_free(lc898212_msm_actuator_info->vcm_pwd);
 	msleep(1);
 }
-#define Q_NUMBER (0x100)
-#define	TO_Q(v)	((v)*Q_NUMBER)
-#define BACK_Q(v) ((v)/Q_NUMBER)
 
-static const int32_t dof[]={
-
-    TO_Q(100.00/100.0),
-    TO_Q(98.04/100.0),
-    TO_Q(96.08/100.0),
-    TO_Q(94.12/100.0),
-    TO_Q(92.16/100.0),
-    TO_Q(90.19/100.0),
-    TO_Q(88.23/100.0),
-    TO_Q(86.03/100.0),
-    TO_Q(83.82/100.0),
-    TO_Q(81.62/100.0),
-    TO_Q(79.41/100.0),
-    TO_Q(77.20/100.0),
-    TO_Q(75.00/100.0),
-    TO_Q(72.55/100.0),
-    TO_Q(70.10/100.0),
-    TO_Q(67.65/100.0),
-    TO_Q(65.20/100.0),
-    TO_Q(62.01/100.0),
-    TO_Q(58.82/100.0),
-    TO_Q(55.15/100.0),
-    TO_Q(51.47/100.0),
-    TO_Q(47.30/100.0),
-    TO_Q(43.14/100.0),
-    TO_Q(38.48/100.0),
-    TO_Q(33.82/100.0),
-    TO_Q(28.67/100.0),
-    TO_Q(23.53/100.0),
-    TO_Q(17.88/100.0),
-    TO_Q(12.23/100.0),
-    TO_Q(6.11/100.0),
-    TO_Q(0.00/100.0),
-};
 int32_t lc898212_msm_actuator_init_table(
 	struct msm_actuator_ctrl_t *a_ctrl)
 {
@@ -153,29 +122,41 @@ int32_t lc898212_msm_actuator_init_table(
 	a_ctrl->step_position_table =
 		kmalloc(sizeof(uint16_t) * (a_ctrl->set_info.total_steps + 1),
 			GFP_KERNEL);
-    
 	if (a_ctrl->step_position_table) {
 		uint16_t i = 0;
-		int16_t infinity = DEFAULT_INFINITY;
-		int16_t macro = DEFAULT_MACRO;
-		int32_t full_range = 0;
+		int16_t infinity = lc898212_kernel_step_table[LC898212_STEP_FAR];
+		int16_t macro = lc898212_kernel_step_table[LC898212_STEP_NEAR_10CM];
+		int16_t min_value = lc898212_kernel_step_table[a_ctrl->set_info.total_steps];
+		int16_t max_value = lc898212_kernel_step_table[0];
 
 		if (a_ctrl->af_OTP_info.VCM_OTP_Read) {
 			infinity = a_ctrl->af_OTP_info.VCM_Infinity;
 			macro = a_ctrl->af_OTP_info.VCM_Macro;
+			min_value = a_ctrl->af_OTP_info.VCM_Top_Mech;
+			max_value = a_ctrl->af_OTP_info.VCM_Bottom_Mech;
 		}
 
-		full_range = (int32_t)infinity + (int32_t)-macro;
-		pr_info("%s infinity=%x macro=%x full_range=%x\n",__func__, infinity, macro, full_range);
+		a_ctrl->initial_code = infinity;
+		pr_info("%s infinity=%x (%d) macro=%x (%d) min_value=%x (%d) max_value=%x (%d)\n",__func__, infinity, (int16_t)infinity,
+			macro, (int16_t)macro, min_value, (int16_t)min_value, max_value, (int16_t)max_value);
 
-		a_ctrl->step_position_table[0] = a_ctrl->initial_code = infinity;
-		pr_info("%s initial_code=%x infinity=%x final=%x\n", __func__, a_ctrl->initial_code, infinity, a_ctrl->step_position_table[0]);
+		for (i = 0; i <= a_ctrl->set_info.total_steps; i++) {
+			if (a_ctrl->af_OTP_info.VCM_OTP_Read) {
 
-		for (i = 1; i <= a_ctrl->set_info.total_steps; i++) {
-			a_ctrl->step_position_table[i] = BACK_Q(full_range*dof[i]) + macro;
+				a_ctrl->step_position_table[i] = infinity +
+					(lc898212_kernel_step_table[i] - lc898212_kernel_step_table[LC898212_STEP_FAR]) * (macro - infinity) /
+					(lc898212_kernel_step_table[LC898212_STEP_NEAR_10CM] - lc898212_kernel_step_table[LC898212_STEP_FAR]);
+
+				if ((int16_t)a_ctrl->step_position_table[i] < min_value)
+					a_ctrl->step_position_table[i] = min_value;
+				if ((int16_t)a_ctrl->step_position_table[i] > max_value)
+					a_ctrl->step_position_table[i] = max_value;
+			} else
+				a_ctrl->step_position_table[i] = lc898212_kernel_step_table[i];
+
 			pr_info("%s af table[%d]=%x (%d)\n",__func__, i, a_ctrl->step_position_table[i], (int16_t)a_ctrl->step_position_table[i]);
 		}
-		
+
 		a_ctrl->curr_step_pos = 0;
 		a_ctrl->curr_region_index = 0;
 	} else {
@@ -250,6 +231,9 @@ static int32_t lc898212_wrapper_i2c_write(struct msm_actuator_ctrl_t *a_ctrl,
 {
     int32_t rc = 0;
     int dir = *(int*)params;
+
+	if(a_ctrl->enable_focus_step_log)
+		pr_info("%s next_lens_position: %x (%d)\n", __func__, next_lens_position, (int16_t)next_lens_position);
 
     rc = msm_camera_i2c_write(&a_ctrl->i2c_client,
             0xa1,
@@ -334,89 +318,6 @@ static struct msm_camera_i2c_reg_conf lc898212_settings_1[] = {
 {0x99, 0x00},
 {0x9A, 0x00},
 };
-
-static struct msm_camera_i2c_reg_conf lc898212_settings_2_0x11[] = {
-{0x88, 0x70},
-{0x92, 0x00},
-{0xA0, 0x01},
-{0x7A, 0x68},
-{0x7B, 0x00},
-{0x7E, 0x78},
-{0x7F, 0x00},
-{0x7C, 0x03},
-{0x7D, 0x00},
-{0x93, 0x00},
-{0x86, 0x60},
-
-{0x40, 0x80},
-{0x41, 0x10},
-{0x42, 0x71},
-{0x43, 0x50},
-{0x44, 0x8F},
-{0x45, 0x90},
-{0x46, 0x61},
-{0x47, 0xB0},
-{0x48, 0x65},
-{0x49, 0xB0},
-{0x76, 0x0C},
-{0x77, 0x50},
-{0x4A, 0x28},
-{0x4B, 0x70},
-{0x50, 0x04},
-{0x51, 0xF0},
-{0x52, 0x76},
-{0x53, 0x10},
-{0x54, 0x16},
-{0x55, 0xC0},
-{0x56, 0x00},
-{0x57, 0x00},
-{0x58, 0x7F},
-{0x59, 0xF0},
-{0x4C, 0x40},
-{0x4D, 0x30},
-{0x78, 0x40},
-{0x79, 0x00},
-{0x4E, 0x7F},
-{0x4F, 0xF0},
-{0x6E, 0x00},
-{0x6F, 0x00},
-{0x72, 0x18},
-{0x73, 0xE0},
-{0x74, 0x4E},
-{0x75, 0x30},
-{0x30, 0x00},
-{0x31, 0x00},
-{0x5A, 0x06},
-{0x5B, 0x80},
-{0x5C, 0x72},
-{0x5D, 0xF0},
-{0x5E, 0x7F},
-{0x5F, 0x70},
-{0x60, 0x7E},
-{0x61, 0xD0},
-{0x62, 0x7F},
-{0x63, 0xF0},
-{0x64, 0x00},
-{0x65, 0x00},
-{0x66, 0x00},
-{0x67, 0x00},
-{0x68, 0x51},
-{0x69, 0x30},
-{0x6A, 0x72},
-{0x6B, 0xF0},
-{0x70, 0x00},
-{0x71, 0x00},
-{0x6C, 0x80},
-{0x6D, 0x10},
-
-{0x76, 0x0c},
-{0x77, 0x50},
-{0x78, 0x40},
-{0x79, 0x00},
-{0x30, 0x00},
-{0x31, 0x00},
-};
-
 static struct msm_camera_i2c_reg_conf lc898212_settings_2_0x12[] = {
 {0x88, 0x70},
 {0x92, 0x00},
@@ -514,24 +415,24 @@ static struct msm_camera_i2c_reg_conf lc898212_settings_2_0x13[] = {
 
 {0x40, 0x80},
 {0x41, 0x10},
-{0x42, 0x74},
-{0x43, 0x10},
-{0x44, 0x8c},
-{0x45, 0xd0},
-{0x46, 0x67},
-{0x47, 0x30},
-{0x48, 0x47},
-{0x49, 0xf0},
-{0x76, 0x10},
+{0x42, 0x71},
+{0x43, 0x50},
+{0x44, 0x8F},
+{0x45, 0x90},
+{0x46, 0x61},
+{0x47, 0xB0},
+{0x48, 0x65},
+{0x49, 0xB0},
+{0x76, 0x0C},
 {0x77, 0x50},
-{0x4A, 0x40},
-{0x4B, 0x30},
+{0x4A, 0x28},
+{0x4B, 0x70},
 {0x50, 0x04},
 {0x51, 0xF0},
 {0x52, 0x76},
 {0x53, 0x10},
-{0x54, 0x28},
-{0x55, 0x70},
+{0x54, 0x16},
+{0x55, 0xC0},
 {0x56, 0x00},
 {0x57, 0x00},
 {0x58, 0x7F},
@@ -544,9 +445,9 @@ static struct msm_camera_i2c_reg_conf lc898212_settings_2_0x13[] = {
 {0x4F, 0xF0},
 {0x6E, 0x00},
 {0x6F, 0x00},
-{0x72, 0x15},
-{0x73, 0x70},
-{0x74, 0x55},
+{0x72, 0x18},
+{0x73, 0xE0},
+{0x74, 0x4E},
 {0x75, 0x30},
 {0x30, 0x00},
 {0x31, 0x00},
@@ -580,6 +481,89 @@ static struct msm_camera_i2c_reg_conf lc898212_settings_2_0x13[] = {
 {0x30, 0x00},
 {0x31, 0x00},
 };
+
+static struct msm_camera_i2c_reg_conf lc898212_settings_2_default[] = {
+{0x88, 0x70},
+{0x92, 0x00},
+{0xA0, 0x01},
+{0x7A, 0x68},
+{0x7B, 0x00},
+{0x7E, 0x78},
+{0x7F, 0x00},
+{0x7C, 0x03},
+{0x7D, 0x00},
+{0x93, 0x00},
+{0x86, 0x60},
+
+{0x40, 0x80},
+{0x41, 0x10},
+{0x42, 0x71},
+{0x43, 0x10},
+{0x44, 0x8F},
+{0x45, 0x50},
+{0x46, 0x61},
+{0x47, 0xB0},
+{0x48, 0x65},
+{0x49, 0xB0},
+{0x76, 0x08},
+{0x77, 0x50},
+{0x4A, 0x28},
+{0x4B, 0x70},
+{0x50, 0x04},
+{0x51, 0xF0},
+{0x52, 0x76},
+{0x53, 0x10},
+{0x54, 0x16},
+{0x55, 0xC0},
+{0x56, 0x00},
+{0x57, 0x00},
+{0x58, 0x7F},
+{0x59, 0xF0},
+{0x4C, 0x40},
+{0x4D, 0x30},
+{0x78, 0x20},
+{0x79, 0x00},
+{0x4E, 0x7F},
+{0x4F, 0xF0},
+{0x6E, 0x00},
+{0x6F, 0x00},
+{0x72, 0x18},
+{0x73, 0xE0},
+{0x74, 0x4E},
+{0x75, 0x30},
+{0x30, 0x00},
+{0x31, 0x00},
+{0x5A, 0x06},
+{0x5B, 0x80},
+{0x5C, 0x72},
+{0x5D, 0xF0},
+{0x5E, 0x7F},
+{0x5F, 0x70},
+{0x60, 0x7E},
+{0x61, 0xD0},
+{0x62, 0x7F},
+{0x63, 0xF0},
+{0x64, 0x00},
+{0x65, 0x00},
+{0x66, 0x00},
+{0x67, 0x00},
+{0x68, 0x51},
+{0x69, 0x30},
+{0x6A, 0x72},
+{0x6B, 0xF0},
+{0x70, 0x00},
+{0x71, 0x00},
+{0x6C, 0x80},
+{0x6D, 0x10},
+
+{0x76, 0x08},
+{0x77, 0x50},
+{0x78, 0x20},
+{0x79, 0x00},
+{0x30, 0x00},
+{0x31, 0x00},
+};
+
 
 static struct msm_camera_i2c_reg_conf lc898212_settings_3[] = {
 {0x3A, 0x00},
@@ -900,7 +884,7 @@ static int32_t lc898212_act_init_focus(struct msm_actuator_ctrl_t *a_ctrl)
 
     switch (a_ctrl->af_OTP_info.VCM_Vendor_Id_Version) {
         case 0x11:
-            rc = msm_camera_i2c_write_tbl (&a_ctrl->i2c_client,lc898212_settings_2_0x11, ARRAY_SIZE(lc898212_settings_2_0x11), MSM_CAMERA_I2C_BYTE_DATA);
+            rc = msm_camera_i2c_write_tbl (&a_ctrl->i2c_client,lc898212_settings_2_default, ARRAY_SIZE(lc898212_settings_2_default), MSM_CAMERA_I2C_BYTE_DATA);
             break;
         case 0x12:
             rc = msm_camera_i2c_write_tbl (&a_ctrl->i2c_client,lc898212_settings_2_0x12, ARRAY_SIZE(lc898212_settings_2_0x12), MSM_CAMERA_I2C_BYTE_DATA);
@@ -909,8 +893,8 @@ static int32_t lc898212_act_init_focus(struct msm_actuator_ctrl_t *a_ctrl)
             rc = msm_camera_i2c_write_tbl (&a_ctrl->i2c_client,lc898212_settings_2_0x13, ARRAY_SIZE(lc898212_settings_2_0x13), MSM_CAMERA_I2C_BYTE_DATA);
             break;
         
-        default: 
-            rc = msm_camera_i2c_write_tbl (&a_ctrl->i2c_client,lc898212_settings_2_0x13, ARRAY_SIZE(lc898212_settings_2_0x13), MSM_CAMERA_I2C_BYTE_DATA);
+        default:
+            rc = msm_camera_i2c_write_tbl (&a_ctrl->i2c_client,lc898212_settings_2_default, ARRAY_SIZE(lc898212_settings_2_default), MSM_CAMERA_I2C_BYTE_DATA);
             break;
         break;
     }
@@ -1116,6 +1100,10 @@ static struct msm_actuator_ctrl_t lc898212_act_t = {
 		.a_create_subdevice = lc898212_act_create_subdevice,
 		.a_config = lc898212_act_config,
 		.is_cal_supported = 1, 
+		.small_step_damping = 17,
+		.medium_step_damping = 20,
+		.big_step_damping = 30,
+		.is_af_infinity_supported = 0,
 	},
 
 	.i2c_client = {

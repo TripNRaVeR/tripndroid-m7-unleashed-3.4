@@ -192,6 +192,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 
 		if (time_before_eq(jiffies, lowmem_deathpending_timeout)) {
 			if (test_task_flag(tsk, TIF_MEMDIE)) {
+				lowmem_print(2, "skipping , waiting for process %d (%s) dead\n",
+				tsk->pid, tsk->comm);
 				rcu_read_unlock();
 				return 0;
 			}

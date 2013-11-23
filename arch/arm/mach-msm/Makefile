@@ -71,7 +71,7 @@ target += smd_rpc_sym.c
 $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
 	$(call if_changed,mkrpcsym)
 
-obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock.o htc_sdservice.o htc_drm.o htc_debug.o htc_rmtmsg.o
+obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock.o htc_sdservice.o htc_drm.o htc_debug.o htc_rmtmsg.o htc_fingerprint.o
 obj-$(CONFIG_MSM_SECURE_IO) += scm-io.o
 obj-$(CONFIG_MSM_PIL) += peripheral-loader.o
 obj-$(CONFIG_MSM_PIL) += scm-pas.o
@@ -342,16 +342,51 @@ obj-$(CONFIG_MACH_JET) += board-jet.o board-jet-regulator.o board-jet-gpiomux.o 
 obj-$(CONFIG_MACH_JET) += board-jet-keypad.o
 obj-$(CONFIG_MACH_JET) += htc_bdaddress.o
 obj-$(CONFIG_MACH_JET) += htc_util.o
+obj-$(CONFIG_MACH_JEWEL_DD) += board-jel_dd.o board-jel_dd-regulator.o board-jel_dd-gpiomux.o board-jel_dd-storage.o board-jel_dd-audio.o board-jel_dd-camera.o
+obj-$(CONFIG_MACH_JEWEL_DD) += board-jel_dd-keypad.o board-jel_dd-gsm-radio.o
+obj-$(CONFIG_MACH_JEWEL_DD) += htc_bdaddress.o
+obj-$(CONFIG_MACH_JEWEL_DD) += htc_util.o
 obj-$(CONFIG_MACH_VALENTE_WX) += board-valente_wx.o board-valente_wx-regulator.o board-valente_wx-gpiomux.o board-valente_wx-storage.o board-valente_wx-audio.o board-valente_wx-camera.o
 obj-$(CONFIG_MACH_VALENTE_WX) += board-valente_wx-keypad.o
 obj-$(CONFIG_MACH_VALENTE_WX) += htc_bdaddress.o
 obj-$(CONFIG_MACH_VALENTE_WX) += htc_util.o
+obj-$(CONFIG_MACH_VALENTE_WX_C9) += board-valente_wx_c9.o board-valente_wx_c9-regulator.o board-valente_wx_c9-gpiomux.o board-valente_wx_c9-storage.o board-valente_wx_c9-audio.o board-valente_wx_c9-camera.o
+obj-$(CONFIG_MACH_VALENTE_WX_C9) += board-valente_wx_c9-keypad.o
+obj-$(CONFIG_MACH_VALENTE_WX_C9) += htc_bdaddress.o
+obj-$(CONFIG_MACH_VALENTE_WX_C9) += htc_util.o
+
+obj-$(CONFIG_MACH_K2_U) += board-k2_u.o board-k2_u-all.o board-k2_u-regulator.o board-k2_ul-audio.o
+obj-$(CONFIG_MACH_K2_U) += htc_bdaddress.o board-k2_u-rfkill.o htc_sleep_clk.o htc_util.o board-k2-camera.o
+#obj-$(CONFIG_MACH_K2_U) += htc_acoustic.o
+obj-$(CONFIG_MACH_K2_U) += board-k2_u-keypad.o
+obj-$(CONFIG_MACH_K2_U) += board-k2_u-mmc.o board-k2_u-wifi.o htc_wifi_nvs.o
 
 
 
 
+obj-$(CONFIG_MACH_K2_CL) += board-k2_cl.o board-k2_cl-all.o board-k2_cl-regulator.o board-k2_cl-audio.o
+obj-$(CONFIG_MACH_K2_CL) += htc_bdaddress.o board-k2_cl-rfkill.o htc_sleep_clk.o htc_util.o board-k2-camera.o
+#obj-$(CONFIG_MACH_K2_CL) += htc_acoustic.o
+obj-$(CONFIG_MACH_K2_CL) += board-k2_cl-keypad.o
+obj-$(CONFIG_MACH_K2_CL) += board-k2_cl-mmc.o board-k2_cl-wifi.o htc_wifi_nvs.o
 
+obj-$(CONFIG_MACH_K2_PLC_CL) += board-k2_plc_cl.o board-k2_plc_cl-all.o board-k2_plc_cl-regulator.o board-k2_plc_cl-audio.o
+obj-$(CONFIG_MACH_K2_PLC_CL) += htc_bdaddress.o board-k2_plc_cl-rfkill.o htc_sleep_clk.o htc_util.o board-k2-camera.o
+#obj-$(CONFIG_MACH_K2_PLC_CL) += htc_acoustic.o
+obj-$(CONFIG_MACH_K2_PLC_CL) += board-k2_plc_cl-keypad.o
+obj-$(CONFIG_MACH_K2_PLC_CL) += board-k2_plc_cl-mmc.o board-k2_plc_cl-wifi.o htc_wifi_nvs.o
 
+obj-$(CONFIG_MACH_K2_UL) += board-k2_ul.o board-k2_ul-all.o board-k2_ul-regulator.o board-k2_ul-audio.o
+obj-$(CONFIG_MACH_K2_UL) += htc_bdaddress.o board-k2_ul-rfkill.o htc_sleep_clk.o htc_util.o board-k2-camera.o
+#obj-$(CONFIG_MACH_K2_UL) += htc_acoustic.o
+obj-$(CONFIG_MACH_K2_UL) += board-k2_ul-keypad.o
+obj-$(CONFIG_MACH_K2_UL) += board-k2_ul-mmc.o board-k2_ul-wifi.o htc_wifi_nvs.o
+
+obj-$(CONFIG_MACH_OPERAUL) += board-operaul.o board-operaul-all.o board-operaul-regulator.o board-operaul-audio.o
+obj-$(CONFIG_MACH_OPERAUL) += htc_bdaddress.o board-operaul-rfkill.o htc_sleep_clk.o htc_util.o board-operaul-camera.o
+#obj-$(CONFIG_MACH_OPERAUL) += htc_acoustic.o
+obj-$(CONFIG_MACH_OPERAUL) += board-operaul-keypad.o
+obj-$(CONFIG_MACH_OPERAUL) += board-operaul-mmc.o board-operaul-wifi.o htc_wifi_nvs.o
 obj-$(CONFIG_ARCH_MSM9615) += board-9615.o devices-9615.o board-9615-regulator.o board-9615-gpiomux.o board-9615-storage.o board-9615-display.o
 obj-$(CONFIG_ARCH_MSM9615) += clock-local.o clock-9615.o acpuclock-9615.o clock-rpm.o clock-pll.o
 obj-$(CONFIG_ARCH_MSM8974) += board-8974.o board-dt.o board-8974-regulator.o board-8974-gpiomux.o
@@ -362,6 +397,7 @@ obj-$(CONFIG_ARCH_MSM9625) += board-9625.o board-9625-gpiomux.o
 
 ifeq ($(CONFIG_WIMAX),y)
 obj-$(CONFIG_MACH_VALENTE_WX) += board-valente_wx-mmc.o  board-common-wimax.o
+obj-$(CONFIG_MACH_VALENTE_WX_C9) += board-valente_wx_c9-mmc.o  board-common-wimax.o
 endif
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
@@ -369,7 +405,15 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 
+obj-$(CONFIG_MACH_VILLEC2) += board-villec2.o devices_htc.o
+obj-$(CONFIG_MACH_VILLEC2) += board-villec2-keypad.o board-villec2-gpiomux.o
+obj-$(CONFIG_MACH_VILLEC2) += board-villec2-camera.o htc_awb_cal.o
+obj-$(CONFIG_MACH_VILLEC2) += htc_bdaddress.o board-villec2-rfkill.o
 # Broadcom 
+obj-$(CONFIG_MACH_VILLEC2) += board-villec2-mmc.o board-villec2-wifi.o htc_wifi_nvs.o 
+#obj-$(CONFIG_MACH_VILLEC2) += board-villec2-mmc.o
+obj-$(CONFIG_MACH_VILLEC2) += htc_util.o
+obj-$(CONFIG_MACH_VILLEC2) += board-villec2-audio.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget
@@ -463,6 +507,7 @@ obj-$(CONFIG_MSM_EBI_ERP) += ebi_erp.o
 obj-$(CONFIG_MSM_CACHE_DUMP) += msm_cache_dump.o
 
 obj-$(CONFIG_MSM_HSIC_SYSMON) += hsic_sysmon.o
+obj-$(CONFIG_MSM_HSIC_SYSMON_CHAR_DEV) += hsic_sysmon_char_dev.o
 obj-$(CONFIG_MSM_HSIC_SYSMON_TEST) += hsic_sysmon_test.o
 
 obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o
@@ -475,6 +520,8 @@ obj-$(CONFIG_HTC_MONITOR) += htc_monitor.o
 obj-y += display/
 
 obj-$(CONFIG_IO_FOOTPRINT) += io_footprint.o
+
+obj-$(CONFIG_IOEXTENDER) += ADP5585_ioextender.o
 
 #PWR2_ADD, @CPU Sniffer: CPU usage statistics.
 #obj-y += htc_cpu_usage_stats.o

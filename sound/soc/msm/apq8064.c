@@ -2421,6 +2421,7 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.codec_name = "snd-soc-dummy",
 		.be_id = MSM_FRONTEND_DAI_VOLTE,
 	},
+#ifdef CONFIG_AUDIO_LOW_LATENCY
 	{
 		.name = "MSM8960 LowLatency",
 		.stream_name = "MultiMedia5",
@@ -2436,6 +2437,7 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA5,
 	},
+#endif
 	{
 		.name = "Compress Stub",
 		.stream_name = "Compress Stub",

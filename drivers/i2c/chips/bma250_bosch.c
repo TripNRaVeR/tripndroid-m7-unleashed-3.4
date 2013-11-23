@@ -26,6 +26,7 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#include <linux/wakelock.h>
 #include <linux/bma250.h>
 #define D(x...) printk(KERN_DEBUG "[GSNR][BMA250_BOSCH] " x)
 #define I(x...) printk(KERN_INFO "[GSNR][BMA250_BOSCH] " x)
@@ -39,6 +40,14 @@ struct bma250acc{
 		z;
 } ;
 
+static void bma250_work_func(struct work_struct *work);
+static DECLARE_DELAYED_WORK(polling_work, bma250_work_func);
+
+#ifdef CONFIG_CIR_ALWAYS_READY
+static void bma250_irq_work_func(struct work_struct *work);
+static DECLARE_WORK(irq_work, bma250_irq_work_func);
+#endif
+
 struct bma250_data {
 	struct i2c_client *bma250_client;
 	atomic_t delay;
@@ -48,6 +57,7 @@ struct bma250_data {
 	struct input_dev *input;
 #ifdef CONFIG_CIR_ALWAYS_READY
 	struct input_dev *input_cir;
+	struct wake_lock cir_always_ready_wake_lock;
 #endif
 	struct bma250acc value;
 	struct mutex value_mutex;
@@ -67,6 +77,8 @@ struct bma250_data {
 
 	struct bma250_platform_data *pdata;
 	short offset_buf[3];
+
+	struct workqueue_struct *bma250_wq;
 };
 
 struct bma250_data *gdata;
@@ -1466,8 +1478,7 @@ static int bma250_read_accel_xyz(struct i2c_client *client,
 
 static void bma250_work_func(struct work_struct *work)
 {
-	struct bma250_data *bma250 = container_of((struct delayed_work *)work,
-			struct bma250_data, work);
+	struct bma250_data *bma250 = gdata;
 	static struct bma250acc acc;
 	unsigned long delay = msecs_to_jiffies(atomic_read(&bma250->delay));
 	s16 data_x = 0, data_y = 0, data_z = 0;
@@ -1493,7 +1504,7 @@ static void bma250_work_func(struct work_struct *work)
 	mutex_lock(&bma250->value_mutex);
 	bma250->value = acc;
 	mutex_unlock(&bma250->value_mutex);
-	schedule_delayed_work(&bma250->work, delay);
+	queue_delayed_work(bma250->bma250_wq, &polling_work, delay);
 }
 
 
@@ -1793,7 +1804,7 @@ static void bma250_set_enable(struct device *dev, int enable)
 		if (pre_enable == 0) {
 			bma250_set_mode(bma250->bma250_client,
 					BMA250_MODE_NORMAL);
-			schedule_delayed_work(&bma250->work,
+			queue_delayed_work(bma250->bma250_wq, &polling_work,
 				msecs_to_jiffies(atomic_read(&bma250->delay)));
 			atomic_set(&bma250->enable, 1);
 		}
@@ -1802,7 +1813,7 @@ static void bma250_set_enable(struct device *dev, int enable)
 		if (pre_enable == 1) {
 			bma250_set_mode(bma250->bma250_client,
 					BMA250_MODE_SUSPEND);
-			cancel_delayed_work_sync(&bma250->work);
+			cancel_delayed_work_sync(&polling_work);
 			atomic_set(&bma250->enable, 0);
 		}
 
@@ -2792,7 +2803,7 @@ static ssize_t bma250_enable_interrupt(struct device *dev,
 		return error;
 	I("bma250_enable_interrupt, power_key_pressed = %d\n", power_key_pressed);
 	if(enable == 1 && !power_key_pressed){ 
-		
+
 	    cir_flag = 1;
 
 	    
@@ -2815,18 +2826,18 @@ static ssize_t bma250_enable_interrupt(struct device *dev,
 	    if (error)
 		return error;
 	    I("Always Ready enable = 1 \n");
-		
+
 	}  else if(enable == 0){
 
 	    error += bma250_set_Int_Enable(bma250->bma250_client, 5, 0);
 	    error += bma250_set_Int_Enable(bma250->bma250_client, 6, 0);
 	    error += bma250_set_Int_Enable(bma250->bma250_client, 7, 0);
-	
+
 	    power_key_pressed = 0;
 	    cir_flag = 0;
 	    if (error)
 		return error;
-	    I("Always Ready enable = 0 \n");	   	    
+	    I("Always Ready enable = 0 \n");
 
 	} 	return count;
 }
@@ -2993,13 +3004,10 @@ unsigned char *orient_st[] = {"upward looking portrait upright",   \
 
 static void bma250_irq_work_func(struct work_struct *work)
 {
-	struct bma250_data *bma250 = container_of((struct work_struct *)work,
-			struct bma250_data, irq_work);
-
+	struct bma250_data *bma250 = gdata;
 	unsigned char status = 0;
-	
-	
-	
+
+	wake_lock_timeout(&(bma250->cir_always_ready_wake_lock), 1*HZ);
 	bma250_get_interruptstatus1(bma250->bma250_client, &status);
 	I("bma250_irq_work_func, status = 0x%x\n", status);
 	input_report_rel(bma250->input_cir,
@@ -3032,8 +3040,7 @@ static irqreturn_t bma250_irq_handler(int irq, void *handle)
 	if (data->bma250_client == NULL)
 		return IRQ_HANDLED;
 
-
-	schedule_work(&data->irq_work);
+	queue_work(data->bma250_wq, &irq_work);
 
 	return IRQ_HANDLED;
 
@@ -3131,7 +3138,7 @@ static int bma250_probe(struct i2c_client *client,
 	data->IRQ = client->irq;
 	err = request_irq(data->IRQ, bma250_irq_handler, IRQF_TRIGGER_RISING,
 			"bma250", data);
-	enable_irq_wake(data->IRQ); 
+	enable_irq_wake(data->IRQ);
 	if (err)
 		E("could not request irq\n");
 
@@ -3210,6 +3217,7 @@ static int bma250_probe(struct i2c_client *client,
 		goto err_create_bma250_device_file;
 	}
 
+	wake_lock_init(&(data->cir_always_ready_wake_lock), WAKE_LOCK_SUSPEND, "cir_always_ready");
 #endif
 	data->g_sensor_class = class_create(THIS_MODULE, "htc_g_sensor");
 	if (IS_ERR(data->g_sensor_class)) {
@@ -3244,6 +3252,13 @@ static int bma250_probe(struct i2c_client *client,
 
 #endif 
 
+	data->bma250_wq = create_singlethread_workqueue("bma250_wq");
+	if (!data->bma250_wq) {
+		E("%s: can't create workqueue\n", __func__);
+		err = -ENOMEM;
+		goto err_create_singlethread_workqueue;
+	}
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	data->early_suspend.suspend = bma250_early_suspend;
@@ -3258,6 +3273,8 @@ static int bma250_probe(struct i2c_client *client,
 	I("%s: BMA250 BOSCH driver probe successful", __func__);
 
 	return 0;
+
+err_create_singlethread_workqueue:
 error_sysfs:
 	device_unregister(data->g_sensor_dev);
 err_create_g_sensor_device:
@@ -3298,7 +3315,7 @@ static void bma250_early_suspend(struct early_suspend *h)
 	if (atomic_read(&data->enable) == 1) {
 	    I("suspend mode\n");
 	    bma250_set_mode(data->bma250_client, BMA250_MODE_SUSPEND);
-	    cancel_delayed_work_sync(&data->work);
+	    cancel_delayed_work_sync(&polling_work);
 	}
 	mutex_unlock(&data->enable_mutex);
 }
@@ -3314,7 +3331,7 @@ static void bma250_late_resume(struct early_suspend *h)
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
 		bma250_set_mode(data->bma250_client, BMA250_MODE_NORMAL);
-		schedule_delayed_work(&data->work,
+		queue_delayed_work(bma250->bma250_wq, &polling_work,
 				msecs_to_jiffies(atomic_read(&data->delay)));
 	}
 	mutex_unlock(&data->enable_mutex);
@@ -3347,7 +3364,7 @@ static int bma250_suspend(struct i2c_client *client, pm_message_t mesg)
 	if (atomic_read(&data->enable) == 1) {
 	    I("suspend mode\n");
 		bma250_set_mode(data->bma250_client, BMA250_MODE_SUSPEND);
-		cancel_delayed_work_sync(&data->work);
+		cancel_delayed_work_sync(&polling_work);
 	}
 	mutex_unlock(&data->enable_mutex);
 
@@ -3375,7 +3392,7 @@ static int bma250_resume(struct i2c_client *client)
 	if (atomic_read(&data->enable) == 1) {
 
 		bma250_set_mode(data->bma250_client, BMA250_MODE_NORMAL);
-		schedule_delayed_work(&data->work,
+		queue_delayed_work(data->bma250_wq, &polling_work,
 				msecs_to_jiffies(atomic_read(&data->delay)));
 	}
 	mutex_unlock(&data->enable_mutex);

@@ -126,6 +126,7 @@ static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 static void msm_fb_scale_bl(__u32 bl_max, __u32 *bl_lvl);
 static int msm_fb_commit_thread(void *data);
 static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
+void msm_fb_shutdown(struct platform_device *pdev);
 
 #ifdef MSM_FB_ENABLE_DBGFS
 
@@ -828,17 +829,17 @@ static int msm_fb_remove(struct platform_device *pdev)
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
-	msm_fb_pan_idle(mfd);
-
-	msm_fb_remove_sysfs(pdev);
-
-	pm_runtime_disable(mfd->fbi->dev);
-
 	if (!mfd)
 		return -ENODEV;
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
+
+	msm_fb_pan_idle(mfd);
+
+	msm_fb_remove_sysfs(pdev);
+
+	pm_runtime_disable(mfd->fbi->dev);
 
 	if (msm_fb_suspend_sub(mfd))
 		printk(KERN_ERR "msm_fb_remove: can't stop the device %d\n", mfd->index);
@@ -916,6 +917,18 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 }
 #else
 #define msm_fb_suspend NULL
+void msm_fb_shutdown(struct platform_device *pdev)
+{
+	struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
+
+	if ((!mfd) || (mfd->key != MFD_KEY))
+		return;
+
+	for (; mfd->ref_cnt > 1; mfd->ref_cnt--)
+		pm_runtime_put(mfd->fbi->dev);
+
+	msm_fb_release(mfd->fbi, 0);
+}
 #endif
 
 static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
@@ -1147,7 +1160,7 @@ static struct platform_driver msm_fb_driver = {
 	.suspend = msm_fb_suspend,
 	.resume = msm_fb_resume,
 #endif
-	.shutdown = NULL,
+	.shutdown = msm_fb_shutdown,
 	.driver = {
 		   /* Driver name must match the device name added in platform.c. */
 		   .name = "msm_fb",
@@ -1226,6 +1239,49 @@ static void msmfb_early_resume(struct early_suspend *h)
 
 	msm_fb_resume_sub(mfd);
 }
+#ifdef CONFIG_HTC_ONMODE_CHARGING
+static void msmfb_onchg_suspend(struct early_suspend *h)
+{
+	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
+						    onchg_suspend);
+	msm_fb_pan_idle(mfd);
+#ifdef CONFIG_FB_MSM_MDP303
+	struct fb_info *fbi = mfd->fbi;
+	switch (mfd->fbi->var.bits_per_pixel) {
+	case 32:
+		memset32_io((void *)fbi->screen_base, 0xFF000000,
+							fbi->fix.smem_len);
+		break;
+	default:
+		memset_io(fbi->screen_base, 0x00, fbi->fix.smem_len);
+		break;
+	}
+#endif
+	MSM_FB_INFO("%s starts.\n", __func__);
+
+	msm_fb_suspend_sub(mfd);
+	mdp_suspended = true;
+	MSM_FB_INFO("%s is done.\n", __func__);
+}
+static void msmfb_onchg_resume(struct early_suspend *h)
+{
+	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
+						    onchg_suspend);
+
+	MSM_FB_INFO("%s starts.\n", __func__);
+	msm_fb_pan_idle(mfd);
+	msm_fb_resume_sub(mfd);
+
+	if (mfd->panel_info.pdest == DISPLAY_1) {
+		struct fb_info *info = mfd->fbi;
+		msm_fb_blank_sub(FB_BLANK_UNBLANK, info,
+			mfd->op_enable);
+	}
+
+	mdp_suspended = false;
+	MSM_FB_INFO("%s is done.\n", __func__);
+}
+#endif 
 #endif
 
 static int unset_bl_level, bl_updated;
@@ -4896,5 +4952,17 @@ int msm_fb_v4l2_update(void *par,
 #endif
 }
 EXPORT_SYMBOL(msm_fb_v4l2_update);
+
+int msm_fb_mixer_pan_idle(DISP_TARGET_PHYS pdest)
+{
+	size_t i;
+	for (i = 0; i < mfd_list_index; ++i) {
+		struct msm_fb_data_type *mfd = mfd_list[i];
+		if (mfd->panel_info.pdest == pdest)
+			return msm_fb_pan_idle(mfd);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(msm_fb_mixer_pan_idle);
 
 module_init(msm_fb_init);

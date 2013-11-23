@@ -338,6 +338,7 @@ struct msm_camera_sensor_platform_info {
 	void *privacy_light_info;
 	enum sensor_mount_angle sensor_mount_angle; 
 	bool ews_enable;
+	bool board_control_reset_pin;
 };
 
 enum msm_camera_actuator_name {
@@ -448,7 +449,8 @@ struct msm_camera_sensor_info {
 #endif
 	
 	int sensor_cut;
-
+	int dual_camera; 
+    struct clk* main_clk;
 };
 
 struct msm_camera_board_info {

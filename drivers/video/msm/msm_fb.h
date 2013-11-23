@@ -262,6 +262,7 @@ int msm_fb_signal_timeline(struct msm_fb_data_type *mfd);
 void msm_fb_release_timeline(struct msm_fb_data_type *mfd);
 void msm_fb_release_busy(struct msm_fb_data_type *mfd);
 void mdp_color_enhancement(const struct mdp_reg *reg_seq, int size);
+int msm_fb_mixer_pan_idle(DISP_TARGET_PHYS pdest);
 
 #ifdef CONFIG_FB_BACKLIGHT
 void msm_fb_config_backlight(struct msm_fb_data_type *mfd);
