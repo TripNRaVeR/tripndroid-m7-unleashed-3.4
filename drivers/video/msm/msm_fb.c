@@ -131,7 +131,6 @@ static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 static void msm_fb_scale_bl(__u32 bl_max, __u32 *bl_lvl);
 static int msm_fb_commit_thread(void *data);
 static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
-void msm_fb_shutdown(struct platform_device *pdev);
 
 #ifdef MSM_FB_ENABLE_DBGFS
 
@@ -922,18 +921,6 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 }
 #else
 #define msm_fb_suspend NULL
-void msm_fb_shutdown(struct platform_device *pdev)
-{
-	struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
-
-	if ((!mfd) || (mfd->key != MFD_KEY))
-		return;
-
-	for (; mfd->ref_cnt > 1; mfd->ref_cnt--)
-		pm_runtime_put(mfd->fbi->dev);
-
-	msm_fb_release(mfd->fbi, 0);
-}
 #endif
 
 static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
@@ -1165,7 +1152,7 @@ static struct platform_driver msm_fb_driver = {
 	.suspend = msm_fb_suspend,
 	.resume = msm_fb_resume,
 #endif
-	.shutdown = msm_fb_shutdown,
+	.shutdown = NULL,
 	.driver = {
 		   /* Driver name must match the device name added in platform.c. */
 		   .name = "msm_fb",
