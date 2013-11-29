@@ -97,8 +97,6 @@ typedef unsigned int t_key;
 #define IS_TNODE(n) (!(n->parent & T_LEAF))
 #define IS_LEAF(n) (n->parent & T_LEAF)
 
-#define FIB_RULE_DEBUG 1
-
 struct rt_trie_node {
 	unsigned long parent;
 	t_key key;
@@ -982,9 +980,6 @@ int fib_table_insert(struct fib_table *tb, struct fib_config *cfg)
 	key = ntohl(cfg->fc_dst);
 
 	pr_debug("Insert table=%u %08x/%d\n", tb->tb_id, key, plen);
-#ifdef FIB_RULE_DEBUG
-	printk(KERN_DEBUG "[NET][CORE][RULE] %s Insert table=%u %08x/%d\n", __func__,tb->tb_id,key, plen);
-#endif
 
 	mask = ntohl(inet_make_mask(plen));
 
@@ -1356,9 +1351,6 @@ int fib_table_delete(struct fib_table *tb, struct fib_config *cfg)
 		return -ESRCH;
 
 	pr_debug("Deleting %08x/%d tos=%d t=%p\n", key, plen, tos, t);
-#ifdef FIB_RULE_DEBUG
-	printk(KERN_DEBUG "[NET][CORE][RULE] %s Deleting %08x/%d tos=%d t=%p\n", __func__, key, plen, tos, t);
-#endif
 
 	fa_to_delete = NULL;
 	fa = list_entry(fa->fa_list.prev, struct fib_alias, fa_list);
@@ -1536,9 +1528,7 @@ int fib_table_flush(struct fib_table *tb)
 	struct trie *t = (struct trie *) tb->tb_data;
 	struct leaf *l, *ll = NULL;
 	int found = 0;
-#ifdef FIB_RULE_DEBUG
-	printk(KERN_DEBUG  "[NET][CORE][RULE]%s+\n", __func__);
-#endif
+
 	for (l = trie_firstleaf(t); l; l = trie_nextleaf(l)) {
 		found += trie_flush_leaf(l);
 
@@ -1551,9 +1541,7 @@ int fib_table_flush(struct fib_table *tb)
 		trie_leaf_remove(t, ll);
 
 	pr_debug("trie_flush found=%d\n", found);
-#ifdef FIB_RULE_DEBUG
-	printk(KERN_DEBUG "[NET][CORE][RULE] %s-; trie_flush found=%d\n", __func__, found);
-#endif
+
 	return found;
 }
 
@@ -1640,10 +1628,6 @@ int fib_table_dump(struct fib_table *tb, struct sk_buff *skb,
 	struct trie *t = (struct trie *) tb->tb_data;
 	t_key key = cb->args[2];
 	int count = cb->args[3];
-
-#ifdef FIB_RULE_DEBUG
-	printk(KERN_DEBUG  "[NET][CORE][RULE]%s\n", __func__);
-#endif
 
 	rcu_read_lock();
 	if (count == 0)
