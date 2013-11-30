@@ -1248,9 +1248,9 @@ static int msm_slim_bw_put(struct snd_kcontrol *kcontrol,
 		    (tabla->dev->parent != NULL))
 			pm_runtime_get_sync(tabla->dev->parent);
 		pr_info("%s: PM_Voting:true\n", __func__);
-		slim_reservemsg_bw (tabla->slim, 24576000,true);
+		if (tabla && tabla->slim) slim_reservemsg_bw (tabla->slim, 24576000,true);
 	} else {
-		slim_reservemsg_bw (tabla->slim, 0,true);
+		if (tabla && tabla->slim) slim_reservemsg_bw (tabla->slim, 0,true);
 		if ((tabla != NULL) &&
 		    (tabla->dev != NULL) &&
 		    (tabla->dev->parent != NULL)) {

@@ -1431,6 +1431,7 @@ struct sensor_cfg_data {
 typedef enum {
   AF_ALGO_QCT,
   AF_ALGO_RAWCHIP,
+  AF_ALGO_RAWCHIP_WITHOUT_HW,
 } af_algo_t;
 
 typedef enum {

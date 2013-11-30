@@ -9,3 +9,7 @@ config HTC_DEBUG_SEND_SIGNAL
         help
           This option enables kernel debug log and dump_stack
           if any processes send signal to assinged processes
+
+config HTC_DEBUG_SAVE_BOOT_MSG
+        default y
+        bool "HTC debug: saving kernel log of booting to memory"

@@ -23,7 +23,6 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 
-extern char *board_get_mid(void);
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -287,10 +286,6 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			ext_csd[EXT_CSD_SEC_CNT + 2] << 16 |
 			ext_csd[EXT_CSD_SEC_CNT + 3] << 24;
 
-		if ((card->ext_csd.sectors > 33554432) && (!strncmp(board_get_mid(), "PN0772", 6)
-			|| !strncmp(board_get_mid(), "PN0752", 6)
-			|| !strncmp(board_get_mid(), "PN0781", 6)) )
-			card->ext_csd.sectors = 30535680;
 		
 		if (card->ext_csd.sectors > (2u * 1024 * 1024 * 1024) / 512)
 			mmc_card_set_blockaddr(card);
@@ -951,11 +946,13 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		
 		if (card->cid.manfid == SAMSUNG_MMC) {
 			card->bkops_check_status = 1;
-			if (!strcmp(card->cid.prod_name, "MBG4GA"))
+			pr_info("%s: set bkops_check_status\n", mmc_hostname(card->host));
+			if (!strcmp(card->cid.prod_name, "MBG4GA")) {
 				perf_degr = 1;
-			if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_SANITIZE)
-				card->need_sanitize = 1;
-			pr_info("%s: set bkops_check_status & need_sanitize\n", mmc_hostname(card->host));
+				if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_SANITIZE)
+					card->need_sanitize = 1;
+				pr_info("%s: set need_sanitize\n", mmc_hostname(card->host));
+			}
 		}
 	} else if (card->cid.manfid == SANDISK_MMC) {
 		

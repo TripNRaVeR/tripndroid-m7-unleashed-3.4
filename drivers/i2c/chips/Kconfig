@@ -32,6 +32,14 @@ config SENSORS_AK8963
           If you say yes here you get support for Asahi Kasei's
           orientation sensor AK8963.
 
+config SENSORS_AK8963_NST
+        tristate "AK8963 compass support with Magnetic Filed Uncalibrated"
+        default n
+        depends on I2C
+        help
+          If you say yes here you get support for Asahi Kasei's
+          orientation sensor AK8963 with Magnetic Filed Uncalibrated.
+
 config SENSORS_PANASONIC_GYRO
 	tristate "PANASONIC GYRO sensor support"
 	depends on I2C=y
@@ -239,4 +247,15 @@ config CIR_ALWAYS_READY
 	help
 	  Enable CIR Always Ready
 
+config R3GD20_NEW_SENSOR_TYPE
+        bool "R3GD20 New Sensor type"
+	default n
+	help
+	  Enable R3GD20 New Sensor type
+
+config SIG_MOTION
+	bool "BMA250 Significant Motion"
+	default n
+	help
+	  Enable BMA250 Significant Motion feature
 endmenu

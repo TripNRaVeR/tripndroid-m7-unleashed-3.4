@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_iw.c 393481 2013-03-27 20:43:17Z $
+ * $Id: wl_iw.c 396420 2013-04-12 06:55:45Z $
  */
 #ifdef CUSTOMER_HW_ONE
 #define USE_IW 1
@@ -129,7 +129,10 @@ extern int dhd_wait_pend8021x(struct net_device *dev);
 #endif 
 
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define DAEMONIZE(a)
+#elif ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)) && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)))
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
@@ -4533,7 +4536,6 @@ thr_wait_for_2nd_eth_dev(void *data)
         WL_TRACE(("\n>%s: Thread:'softap ethdev IF:%s is detected !!!'\n\n",
                 __FUNCTION__, ap_net_dev->name));
 
-        printf("%s: set ap_cfg_running to TRUE", __FUNCTION__);
         ap_cfg_running = TRUE;
 
         dhd_os_spin_unlock(iw->pub, flags);
@@ -4996,7 +4998,6 @@ int wl_softap_stop(struct net_device *dev)
 
                 bcm_mdelay(100);
 
-                printf("%s set ap_cfg_running to FALSE", __FUNCTION__);
                 ap_cfg_running = FALSE;
                 wl_iw_send_priv_event(priv_dev, "AP_DOWN");
         } else
@@ -5035,10 +5036,9 @@ wl_iw_restart_apsta(struct ap_profile *ap)
                 return;
         }
 
-        net_os_wake_lock(dev);
-        DHD_OS_MUTEX_LOCK(&wl_softap_lock);
+            net_os_wake_lock(dev);
+            DHD_OS_MUTEX_LOCK(&wl_softap_lock);
 
-        printf("%s: set ap_cfg_running to TRUE", __FUNCTION__);
         ap_cfg_running = TRUE;
 
         WL_SOFTAP(("wl_iw: set apsta profile:\n"));

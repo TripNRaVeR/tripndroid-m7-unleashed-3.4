@@ -122,6 +122,9 @@ static unsigned ap2mdm_pmic_reset_n_gpio = -1;
 static unsigned ap2qsc_pmic_pwr_en_value;
 static unsigned ap2qsc_pmic_pwr_en_gpio = -1;
 static unsigned ap2qsc_pmic_soft_reset_gpio = -1;
+#ifdef CONFIG_QSC_MODEM
+void set_qsc_drv_is_ready(int is_ready);
+#endif
 
 void set_mdm2ap_errfatal_restart_flag(unsigned flag)
 {
@@ -170,7 +173,11 @@ static void turn_off_qsc_power(void)
 		if (gpio_is_valid(ap2qsc_pmic_soft_reset_gpio))
 		{
 			pr_info("Discharging QSC...\n");
+#ifdef CONFIG_QSC_MODEM
+			set_qsc_drv_is_ready(0);
+#endif
 			gpio_direction_output(ap2qsc_pmic_soft_reset_gpio, 1);
+
 			mdelay(500);
 		}
 

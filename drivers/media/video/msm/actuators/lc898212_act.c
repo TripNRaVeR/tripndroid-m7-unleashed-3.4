@@ -246,7 +246,7 @@ static int32_t lc898212_wrapper_i2c_write(struct msm_actuator_ctrl_t *a_ctrl,
 
     rc = msm_camera_i2c_write(&a_ctrl->i2c_client,
          0x16,
-         dir ? 0x180 : 0xfe80,
+         dir==-1 ? 0x180 : 0xfe80,
          MSM_CAMERA_I2C_WORD_DATA);
     if (rc < 0) {
         pr_err("%s 0x16 i2c write failed (%d)\n", __func__, rc);
@@ -965,7 +965,7 @@ static int32_t lc898212_act_init_focus(struct msm_actuator_ctrl_t *a_ctrl)
 	    return rc;
     }
 
-    step = (signed short)infinity > (signed short)data ? 0xfe80 : 0x180;
+    step = (signed short)infinity <= (signed short)data ? 0xfe80 : 0x180;
 
     rc = msm_camera_i2c_write(&a_ctrl->i2c_client, 0x16, step, MSM_CAMERA_I2C_WORD_DATA);
     if (rc < 0) {

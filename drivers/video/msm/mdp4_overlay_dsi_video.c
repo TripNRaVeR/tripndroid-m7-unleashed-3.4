@@ -361,7 +361,7 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 
 	ret = wait_event_timeout(vctrl->wait_queue_internal,
 			!ktime_equal(timestamp, vctrl->vsync_time),
-			msecs_to_jiffies(VSYNC_PERIOD * 4));
+			msecs_to_jiffies(VSYNC_PERIOD * 8));
 
 	if (ret <= 0)
 		pr_err("%s timeout ret=%d", __func__, ret);

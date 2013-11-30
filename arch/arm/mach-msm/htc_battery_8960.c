@@ -1364,7 +1364,7 @@ static void batt_check_overload(void)
 }
 
 #define CHG_ONE_PERCENT_LIMIT_PERIOD_MS		(1000 * 60)
-#define DISCHG_UPDATE_PERIOD_MS		(1000 * 60)
+#define DISCHG_UPDATE_PERIOD_MS			(1000 * 60)
 #define ONE_PERCENT_LIMIT_PERIOD_MS		(1000 * (60 + 10))
 #define FIVE_PERCENT_LIMIT_PERIOD_MS	(1000 * (300 + 10))
 static void batt_level_adjust(unsigned long time_since_last_update_ms)
@@ -1522,8 +1522,13 @@ static void batt_level_adjust(unsigned long time_since_last_update_ms)
 			} else {
 				if (99 < htc_batt_info.rep.level)
 					htc_batt_info.rep.level = 99; 
-				else if (prev_level < htc_batt_info.rep.level)
-					htc_batt_info.rep.level = prev_level + 1;
+				else if (prev_level < htc_batt_info.rep.level) {
+						if(time_since_last_update_ms >
+								CHG_ONE_PERCENT_LIMIT_PERIOD_MS)
+							htc_batt_info.rep.level = prev_level + 1;
+						else
+							htc_batt_info.rep.level = prev_level;
+				}
 			}
 		}
 		critical_low_enter = 0;
@@ -1704,29 +1709,20 @@ static void power_jacket_level_update(int first)
 		__func__, htc_batt_info.rep.pj_vol, htc_batt_info.rep.pj_level,
 		htc_batt_info.rep.pj_level_pre, is_chg);
 
-	if (htc_batt_info.rep.pj_vol < 2400) {
-		
-		htc_batt_info.rep.pj_level = htc_batt_info.rep.pj_level_pre;
-	} else if (!first) {
-		
-		if (htc_batt_info.rep.charging_enabled == 0) {
-			if (htc_batt_info.rep.pj_level >= htc_batt_info.rep.pj_level_pre)
-				htc_batt_info.rep.pj_level = htc_batt_info.rep.pj_level_pre;
+	
+	if (htc_batt_info.rep.charging_enabled == 0) {
+		if (htc_batt_info.rep.pj_level >= htc_batt_info.rep.pj_level_pre && !first)
+			htc_batt_info.rep.pj_level = htc_batt_info.rep.pj_level_pre;
 
-			if (htc_batt_info.rep.level < 15 &&
-				htc_batt_info.rep.pj_level > 19 &&
-				htc_batt_info.rep.pj_level <= 39)
-				htc_batt_info.rep.pj_level = 19;
-
-			
-			if (htc_batt_info.rep.pj_level_pre - htc_batt_info.rep.pj_level > 19)
-				htc_batt_info.rep.pj_level = htc_batt_info.rep.pj_level_pre - 19;
-		} else {
+		if (htc_batt_info.rep.level < 15 &&
+			htc_batt_info.rep.pj_level > 19 &&
+			htc_batt_info.rep.pj_level <= 39)
+			htc_batt_info.rep.pj_level = 19;
+	} else {
+	
 		
-			
-			if (htc_batt_info.rep.pj_level - htc_batt_info.rep.pj_level_pre > 19)
-				htc_batt_info.rep.pj_level = htc_batt_info.rep.pj_level_pre + 19;
-		}
+		if (htc_batt_info.rep.pj_level - htc_batt_info.rep.pj_level_pre > 19 && !first)
+			htc_batt_info.rep.pj_level = htc_batt_info.rep.pj_level_pre + 19;
 	}
 
 	

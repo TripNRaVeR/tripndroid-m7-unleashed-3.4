@@ -763,6 +763,10 @@ wf_chspec_valid(chanspec_t chanspec)
 
 				if (i == num_ch) {
 					
+					if (chspec_ch == 165)
+						i = 0;
+
+					
 					if (chspec_ch == 34 || chspec_ch == 38 ||
 					    chspec_ch == 42 || chspec_ch == 46)
 						i = 0;

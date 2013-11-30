@@ -800,6 +800,7 @@ struct vfe32_frame_extra {
 #define VFE_IRQ_STATUS_1                0x00000030
 #define VFE_IRQ_COMP_MASK               0x00000034
 #define VFE_BUS_CMD                     0x00000038
+
 #define VFE_BUS_PING_PONG_STATUS        0x00000180
 #define VFE_AXI_CMD                     0x000001D8
 #define VFE_AXI_STATUS        0x000001DC

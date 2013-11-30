@@ -670,7 +670,7 @@ static int msm_server_streamoff(struct msm_cam_v4l2_device *pcam, int idx)
 	D("%s, pcam = 0x%x\n", __func__, (u32)pcam);
 	memset(&ctrlcmd, 0, sizeof(ctrlcmd));  
 	ctrlcmd.type        = MSM_V4L2_STREAM_OFF;
-	ctrlcmd.timeout_ms  = 6000;
+	ctrlcmd.timeout_ms  = 20000;
 	ctrlcmd.length      = 0;
 	ctrlcmd.value       = NULL;
 	ctrlcmd.stream_type = pcam->dev_inst[idx]->image_mode;
@@ -2244,8 +2244,10 @@ void msm_release_ion_client(struct kref *ref)
 		struct msm_cam_media_controller, refcount);
 	pr_info("%s Calling ion_client_destroy\n", __func__);
 
-	if (mctl)
+	if (mctl && (mctl->client)) {
 		ion_client_destroy(mctl->client);
+		mctl->client = NULL;
+	}
 }
 
 static int msm_close(struct file *f)

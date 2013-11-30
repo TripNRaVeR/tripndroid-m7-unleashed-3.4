@@ -372,7 +372,7 @@ static int htc_headset_1wire_probe(struct platform_device *pdev)
 	}
 	mutex_init(&hi->mutex_lock);
 	hs_1wire_register();
-	queue_delayed_work(onewire_wq, &onewire_init_work, msecs_to_jiffies(3000));
+	queue_delayed_work(onewire_wq, &onewire_init_work, msecs_to_jiffies(1000));
 	hs_notify_driver_ready(DRIVER_NAME);
 
 	HS_LOG("--------------------");

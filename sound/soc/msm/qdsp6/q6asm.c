@@ -1532,8 +1532,13 @@ int q6asm_open_write(struct audio_client *ac, uint32_t format)
 	if (open.post_proc_top == 0)
 		open.post_proc_top = DEFAULT_POPP_TOPOLOGY;
 
+	if (ac->perf_mode) {
+	    pr_info("%s: perf_mode is true change to DEFAULT_POPP_TOPOLOGY\n",
+	                        __func__);
+	    open.post_proc_top = DEFAULT_POPP_TOPOLOGY;
+	}
 	
-	if (qops->get_q6_effect) {
+	else if (qops->get_q6_effect) {
 		int mode = qops->get_q6_effect();
 		if (mode == 0) { 
 			pr_info("%s: change to HTC_POPP_TOPOLOGY\n",

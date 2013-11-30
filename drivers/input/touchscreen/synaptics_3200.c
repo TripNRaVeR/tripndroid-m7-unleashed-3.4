@@ -2437,113 +2437,58 @@ static void synaptics_ts_report_func(struct synaptics_ts_data *ts)
 static void synaptics_ts_button_func(struct synaptics_ts_data *ts)
 {
 	int ret;
-	uint8_t data = 0;
+	uint8_t data = 0, idx = 0;
 	uint16_t x_position = 0, y_position = 0;
 
 	ret = i2c_syn_read(ts->client,
 		get_address_base(ts, 0x1A, DATA_BASE), &data, 1);
 	if (data) {
-		if (data & 0x01) {
-			printk("[TP] back key pressed\n");
-			vk_press = 1;
-			if (ts->button) {
-				if (ts->button[0].index) {
-					x_position = (ts->button[0].x_range_min + ts->button[0].x_range_max) / 2;
-					y_position = (ts->button[0].y_range_min + ts->button[0].y_range_max) / 2;
-				}
+		vk_press = 1;
+		if (ts->button) {
+			idx =	(data == 0x01 ? 0:
+				 data == 0x02 ? 1:
+				 data == 0x04 ? 2:
+				 100);
+
+			if (idx == 100) {
+				vk_press = 0;
+				pr_err("[TP] vk_data:%#x, idx=%d", data, idx);
+				return;
 			}
-			if (ts->htc_event == SYN_AND_REPORT_TYPE_A) {
-				if (ts->support_htc_event) {
-					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE,
-						100 << 16 | 100);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION,
-						x_position << 16 | y_position);
-				}
-				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, 0);
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-					x_position);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-					y_position);
-				input_mt_sync(ts->input_dev);
-			} else if (ts->htc_event == SYN_AND_REPORT_TYPE_B) {
-				if (ts->support_htc_event) {
-					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE,
-						100 << 16 | 100);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION,
-						x_position << 16 | y_position);
-				}
-				input_mt_slot(ts->input_dev, 0);
-				input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER,
-				1);
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-					x_position);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-					y_position);
-			}
+			x_position = (ts->button[idx].x_range_min + ts->button[idx].x_range_max) / 2;
+			y_position = (ts->button[idx].y_range_min + ts->button[idx].y_range_max) / 2;
 		}
-		else if (data & 0x02) {
-			printk("[TP] home key pressed\n");
-			vk_press = 1;
-			if (ts->button) {
-				if (ts->button[1].index) {
-					x_position = (ts->button[1].x_range_min + ts->button[1].x_range_max) / 2;
-					y_position = (ts->button[1].y_range_min + ts->button[1].y_range_max) / 2;
-				}
-			}
-			if (ts->htc_event == SYN_AND_REPORT_TYPE_A) {
-				if (ts->support_htc_event) {
-					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE,
-						100 << 16 | 100);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION,
-						x_position << 16 | y_position);
-				}
-				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, 0);
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-					x_position);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-					y_position);
-				input_mt_sync(ts->input_dev);
-			} else if (ts->htc_event == SYN_AND_REPORT_TYPE_B) {
-				if (ts->support_htc_event) {
-					input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE,
-						100 << 16 | 100);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION,
-						x_position << 16 | y_position);
-				}
-				input_mt_slot(ts->input_dev, 0);
-				input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER,
-				1);
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-					100);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-					x_position);
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-					y_position);
-			}
+		data == 0x01 ? pr_info("[TP] back key pressed, vk=%x\n", data) :
+		data == 0x02 ? pr_info("[TP] home key pressed, vk=%x\n", data) :
+		data == 0x04 ? pr_info("[TP] app key pressed , vk=%x\n", data) :
+		pr_info("[TP] vk=%#x\n", data);
+
+		if (ts->support_htc_event) {
+			input_report_abs(ts->input_dev, ABS_MT_AMPLITUDE, 100 << 16 | 100);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION, x_position << 16 | y_position);
 		}
-	}else {
+		switch (ts->htc_event) {
+		case SYN_AND_REPORT_TYPE_A:
+			input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, 0);
+			break;
+		case SYN_AND_REPORT_TYPE_B:
+			input_mt_slot(ts->input_dev, 0);
+			input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, 1);
+			break;
+	}
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 100);
+		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 100);
+		input_report_abs(ts->input_dev, ABS_MT_PRESSURE, 100);
+		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x_position);
+		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y_position);
+		switch (ts->htc_event) {
+		case SYN_AND_REPORT_TYPE_A:
+			input_mt_sync(ts->input_dev);
+			break;
+		case SYN_AND_REPORT_TYPE_B:
+			break;
+		}
+	} else {
 		printk("[TP] virtual key released\n");
 		vk_press = 0;
 		if (ts->htc_event == SYN_AND_REPORT_TYPE_A) {

@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_cdc.c 393623 2013-03-28 06:27:09Z $
+ * $Id: dhd_cdc.c 416698 2013-08-06 07:53:34Z $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
@@ -123,7 +123,6 @@ dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uin
 {
 	dhd_prot_t *prot = dhd->prot;
 	cdc_ioctl_t *msg = &prot->msg;
-	void *info;
 	int ret = 0, retries = 0;
 	uint32 id, flags = 0;
 
@@ -184,14 +183,11 @@ retry:
 	}
 
 	
-	info = (void*)&msg[1];
-
-	
 	if (buf)
 	{
 		if (ret < (int)len)
 			len = ret;
-		memcpy(buf, info, len);
+		memcpy(buf, (void*) prot->buf, len);
 	}
 
 	
@@ -360,7 +356,7 @@ int dhd_del_pfn_ssid(char * ssid, int ssid_len)
 }
 extern int dhd_pno_enable(dhd_pub_t *dhd, int pfn_enabled);
 extern int dhd_pno_clean(dhd_pub_t *dhd);
-extern int dhd_pno_set(dhd_pub_t *dhd, wlc_ssid_t* ssids_local, int nssid,
+extern int dhd_pno_set_ssid(dhd_pub_t *dhd, wlc_ssid_t* ssids_local, int nssid,
                        ushort  scan_fr, int pno_repeat, int pno_freq_expo_max);
 char project_type[33];
 int dhd_set_pfn(dhd_pub_t *dhd, int enabled)
@@ -388,15 +384,15 @@ int dhd_set_pfn(dhd_pub_t *dhd, int enabled)
 
 		
 	        if (project_type != NULL && !strnicmp(project_type, "KT", strlen("KT")) ) {
-				ret = dhd_pno_set(dhd, ssids_local, config_network, 120, 0, 0);
+				ret = dhd_pno_set_ssid(dhd, ssids_local, config_network, 120, 0, 0);
 				if(ret < 0){
-					DHD_ERROR(("%s Set dhd_pno_set error %d\n", __FUNCTION__, ret));
+					DHD_ERROR(("%s Set dhd_pno_set_ssid error %d\n", __FUNCTION__, ret));
 					return ret;
 				}
         	} else {
-				ret = dhd_pno_set(dhd, ssids_local, config_network, PFN_SCAN_FREQ, 0, 0);
+				ret = dhd_pno_set_ssid(dhd, ssids_local, config_network, PFN_SCAN_FREQ, 0, 0);
 				if(ret < 0){
-					DHD_ERROR(("%s Set dhd_pno_set error %d\n", __FUNCTION__, ret));
+					DHD_ERROR(("%s Set dhd_pno_set_ssid error %d\n", __FUNCTION__, ret));
 					return ret;
 				}
         	}
@@ -673,6 +669,8 @@ dhd_prot_detach(dhd_pub_t *dhd)
 {
 #ifdef PROP_TXSTATUS
 	dhd_wlfc_deinit(dhd);
+	if (dhd->plat_deinit)
+		dhd->plat_deinit((void *)dhd);
 #endif
 #ifndef CONFIG_DHD_USE_STATIC_BUF
 	MFREE(dhd->osh, dhd->prot, sizeof(dhd_prot_t));
@@ -712,11 +710,6 @@ dhd_prot_init(dhd_pub_t *dhd)
 	if (dhd_download_fw_on_driverload)
 #endif 
 		ret = dhd_preinit_ioctls(dhd);
-
-#ifdef PROP_TXSTATUS
-	ret = dhd_wlfc_init(dhd);
-#endif
-
 	
 	dhd->iswl = TRUE;
 

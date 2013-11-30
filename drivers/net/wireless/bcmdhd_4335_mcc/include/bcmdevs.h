@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdevs.h 387183 2013-02-24 07:42:07Z $
+ * $Id: bcmdevs.h 414368 2013-07-24 15:00:23Z $
  */
 
 #ifndef	_BCMDEVS_H
@@ -290,9 +290,11 @@
 #define	BCM43243_CHIP_ID	43243		
 #define BCM4334_CHIP_ID		0x4334		
 #define BCM4335_CHIP_ID		0x4335		
+#define BCM4339_CHIP_ID		0x4339		
 #define BCM4360_CHIP_ID		0x4360          
 #define BCM4352_CHIP_ID		0x4352          
 #define BCM43526_CHIP_ID	0xAA06
+#define BCM43340_CHIP_ID	43340		
 #define BCM43341_CHIP_ID	43341		
 #define BCM43342_CHIP_ID	43342		
 #define BCM4335_CHIP_ID         0x4335

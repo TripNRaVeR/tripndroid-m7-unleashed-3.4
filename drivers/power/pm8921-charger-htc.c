@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1278,30 +1278,6 @@ static int pm_chg_batt_hot_temp_config(struct pm8921_chg_chip *chip,
 	return pm_chg_masked_write(chip, CHG_CNTRL_2,
 					PM8921_CHG_BATT_TEMP_THR_HOT,
 					 temp);
-}
-
-static void disable_input_voltage_regulation(struct pm8921_chg_chip *chip)
-{
-	u8 temp;
-
-	pm_chg_write(chip, CHG_BUCK_CTRL_TEST3, 0x70);
-	pm8xxx_readb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, &temp);
-	
-	temp |= 0x81;
-	pm_chg_write(chip, CHG_BUCK_CTRL_TEST3, temp);
-}
-
-static void enable_input_voltage_regulation(struct pm8921_chg_chip *chip)
-{
-	u8 temp;
-
-	pm_chg_write(chip, CHG_BUCK_CTRL_TEST3, 0x70);
-	pm8xxx_readb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, &temp);
-	
-	temp &= 0xFE;
-	
-	temp |= 0x80;
-	pm_chg_write(chip, CHG_BUCK_CTRL_TEST3, temp);
 }
 
 static int64_t read_battery_id(struct pm8921_chg_chip *chip)
@@ -2631,8 +2607,6 @@ static void handle_usb_present_change(struct pm8921_chg_chip *chip,
 
 			pm8921_chg_disable_irq(chip, CHG_GONE_IRQ);
 	}
-	enable_input_voltage_regulation(chip);
-
 	bms_notify_check(chip);
 }
 
@@ -3939,7 +3913,7 @@ static void pj_pogo_detect_worker(struct work_struct *work)
 		pj_vol = get_prop_pj_uvolts(the_chip)/1000;
 		pr_info("%s: pj_vol=%d\n", __func__, pj_vol);
 
-		if (pj_vol_err == 0 && pj_in == 1) {
+		if (pj_vol_err == 0 && pj_in == 1 && pj_vol < 2400) {
 			pj_vol_err++;
 			err = pm8921_set_pj_chg_control(0, 1); 
 			if (err) {
@@ -3959,6 +3933,7 @@ static void pj_pogo_detect_worker(struct work_struct *work)
 			if (is_pj_in ^ pj_in || first) {
 				if (pj_in) {
 					is_batt_full = false;
+					pj_chg_full = PJ_NOT_FULL;
 					eoc_count = eoc_count_by_curr = 0;
 					
 					if ((is_usb_chg_plugged_in(the_chip)
@@ -3970,12 +3945,10 @@ static void pj_pogo_detect_worker(struct work_struct *work)
 					htc_charger_event_notify(HTC_CHARGER_EVENT_POWER_JACKET_IN);
 				} else {
 					pm8921_pj_mpp_unconfig(); 
+					pj_chg_full = PJ_NOT_FULL;
 					htc_charger_event_notify(HTC_CHARGER_EVENT_POWER_JACKET_OUT);
 				}
 				is_pj_in = pj_in;
-				pj_chg_full = PJ_NOT_FULL;
-				if(delayed_work_pending(&the_chip->pj_full_detect_work))
-					cancel_delayed_work(&the_chip->pj_full_detect_work);
 			}
 			first = 0;
 			pj_detect_times = 0;
@@ -4153,29 +4126,49 @@ static irqreturn_t chgstate_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int param_vin_disable_counter = 5;
-module_param(param_vin_disable_counter, int, 0644);
+enum {
+	PON_TIME_25NS	= 0x04,
+	PON_TIME_50NS	= 0x08,
+	PON_TIME_100NS	= 0x0C,
+};
 
-static void attempt_reverse_boost_fix(struct pm8921_chg_chip *chip,
-							int count, int usb_ma)
+static void set_min_pon_time(struct pm8921_chg_chip *chip, int pon_time_ns)
 {
-	if (usb_ma)
-		__pm8921_charger_vbus_draw(500);
-	pr_debug(" count = %d iusb=500mA\n", count);
-	disable_input_voltage_regulation(chip);
-	pr_debug(" count = %d disable_input_regulation\n", count);
+	u8 temp;
+	int rc;
 
-	msleep(20);
+	rc = pm8xxx_writeb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, 0x40);
+	if (rc) {
+		pr_err("Failed to write 0x70 to CTRL_TEST3 rc = %d\n", rc);
+		return;
+	}
+	rc = pm8xxx_readb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, &temp);
+	if (rc) {
+		pr_err("Failed to read CTRL_TEST3 rc = %d\n", rc);
+		return;
+	}
+	
+	temp &= 0xF3;
+	
+	temp |= (u8)pon_time_ns;
+	
+	temp |= 0x80;
+	rc = pm8xxx_writeb(chip->dev->parent, CHG_BUCK_CTRL_TEST3, temp);
+	if (rc) {
+		pr_err("Failed to write 0x%x to CTRL_TEST3 rc=%d\n", temp, rc);
+		return;
+	}
+}
 
-	pr_debug(" count = %d end sleep 20ms chg_gone=%d, usb_valid = %d\n",
-								count,
-								pm_chg_get_rt_status(chip, CHG_GONE_IRQ),
-								is_usb_chg_plugged_in(chip));
-	pr_debug(" count = %d restoring input regulation and usb_ma = %d\n",
-								count, usb_ma);
-	enable_input_voltage_regulation(chip);
-	if (usb_ma)
-		__pm8921_charger_vbus_draw(usb_ma);
+static void attempt_reverse_boost_fix(struct pm8921_chg_chip *chip)
+{
+	pr_debug("Start\n");
+	set_min_pon_time(chip, PON_TIME_100NS);
+	pm_chg_vinmin_set(chip, chip->vin_min + 200);
+	msleep(250);
+	pm_chg_vinmin_set(chip, chip->vin_min);
+	set_min_pon_time(chip, PON_TIME_25NS);
+	pr_debug("End\n");
 }
 
 #define VIN_ACTIVE_BIT BIT(0)
@@ -4232,14 +4225,6 @@ static void unplug_check_worker(struct work_struct *work)
 		pr_debug("USB charger active\n");
 
 		pm_chg_iusbmax_get(chip, &usb_ma);
-		#if 0
-		if (usb_ma == 500 && !usb_target_ma) {
-			pr_info("Stopping Unplug Check Worker USB == 500mA\n");
-			rb_trial_count = ovp_trial_count = 0;
-			disable_input_voltage_regulation(chip);
-			return;
-		}
-		#endif
 
 		if (usb_ma <= 100) {
 			pr_info(
@@ -4317,28 +4302,15 @@ static void unplug_check_worker(struct work_struct *work)
 
 	ibat = get_prop_batt_current(chip);
 	if (reg_loop & VIN_ACTIVE_BIT) {
-
-		pr_debug("ibat = %d fsm = %d reg_loop = 0x%x\n",
-				ibat, pm_chg_get_fsm_state(chip), reg_loop);
 		if (ibat > 0) {
-			int count = 0;
-			while (count++ < param_vin_disable_counter
-					&& active_chg_plugged_in == 1) {
-				if (active_path & USB_ACTIVE_BIT)
-					attempt_reverse_boost_fix(chip,
-								count, usb_ma);
-				else
-					attempt_reverse_boost_fix(chip,
-								count, 0);
-				active_chg_plugged_in
-					= is_active_chg_plugged_in(chip,
-						active_path);
-				pr_debug("active_chg_plugged_in = %d\n",
-						active_chg_plugged_in);
-				if(!active_chg_plugged_in)
-					pr_info("%s: cable out by vin disable, count:%d\n",
-							__func__, count);
-			}
+			pr_debug("revboost ibat = %d fsm = %d loop = 0x%x\n",
+				ibat, pm_chg_get_fsm_state(chip), reg_loop);
+			attempt_reverse_boost_fix(chip);
+			active_chg_plugged_in
+				= is_active_chg_plugged_in(chip,
+					active_path);
+			pr_debug("revboost post: active_chg_plugged_in = %d\n",
+					active_chg_plugged_in);
 			rb_trial_count++;
 			if (rb_trial_count > CONSECUTIVE_TRIAL_COUNT_MAX) {
 				pr_info("too much rb_trial_count=%d\n", rb_trial_count);
@@ -5180,6 +5152,8 @@ static void pj_full_detect_worker(struct work_struct *work)
 	pj_chg_stat = pm8921_get_pj_chg_control();
 	pj_vol = get_prop_pj_uvolts(the_chip)/1000;
 
+	pr_info("%s:ori: pj_chg_full:%d, pj_chg_status:%d\n",
+		__func__, pj_chg_full, pj_chg_stat);
 	if (pj_chg_full == PJ_NOT_FULL) {
 		pr_info("%s:Read voltage: %d. Start detect PJ voltage after 10 minutes.",
 			__func__, pj_vol);
@@ -5189,7 +5163,6 @@ static void pj_full_detect_worker(struct work_struct *work)
 			msecs_to_jiffies(600000));
 	} else if (pj_chg_full == PJ_FULL_DETECT) {
 		
-		pr_info("%s:Set PJ_OFF 30s to read voltage.\n", __func__);
 		err = pm8921_set_pj_chg_control(0, 0);
 		if (err) {
 			pr_info("%s: set PJ_OFF fail (%d).\n", __func__, err);
@@ -5209,9 +5182,6 @@ static void pj_full_detect_worker(struct work_struct *work)
 				pj_chg_full = PJ_FULL;
 				pj_full_detect_counter = 0;
 			} else {
-				pr_info("%s: pj voltage %dmV not meet full criteria (%d), "
-					"pj_full_detect_counter:%d\n", __func__, pj_vol,
-					the_chip->pj_full_vol, pj_full_detect_counter);
 				pj_full_detect_counter++;
 				if (pj_full_detect_counter == 15) {
 					pj_chg_full = PJ_FULL;
@@ -5224,10 +5194,9 @@ static void pj_full_detect_worker(struct work_struct *work)
 				}
 			}
 		} else {
-			pr_info("%s: not PJ_CHG_STATUS_OFF state, pj_chg_stat: %d, "
-				"re-read again.\n", __func__, pj_chg_stat);
-			pj_chg_full = PJ_FULL_DETECT;
-			schedule_delayed_work(&the_chip->pj_full_detect_work,0);
+			pr_info("%s: not PJ_CHG_STATUS_OFF state, pj_chg_stat: %d.\n",
+				__func__, pj_chg_stat);
+			pj_chg_full = PJ_NOT_FULL;
 		}
 	}
 #if 0 
@@ -5238,6 +5207,8 @@ static void pj_full_detect_worker(struct work_struct *work)
 			pr_info("%s: set PJ_CHG fail (%d).\n", __func__, err);
 	}
 #endif
+	pr_info("%s:end: pj_chg_full:%d, pj_vol:%d, pj_full_detect_counter:%d\n",
+		__func__, pj_chg_full, pj_vol, pj_full_detect_counter);
 }
 
 #define CONSECUTIVE_COUNT	3
@@ -5261,8 +5232,6 @@ static void eoc_worker(struct work_struct *work)
 				__func__, pm_chg_get_rt_status(chip, FASTCHG_IRQ));
 		is_batt_full = false;
 		pj_chg_full = PJ_NOT_FULL;
-		if(the_chip->pj_in_irq && delayed_work_pending(&the_chip->pj_full_detect_work))
-			cancel_delayed_work(&the_chip->pj_full_detect_work);
 		eoc_count = eoc_count_by_curr = 0;
 		is_ac_safety_timeout_twice = false;
 		if (!flag_disable_wakelock)

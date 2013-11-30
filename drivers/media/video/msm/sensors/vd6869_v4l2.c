@@ -5061,7 +5061,6 @@ static int vd6869_cut10_init_otp(struct msm_sensor_ctrl_t *s_ctrl){
 	return rc;
 }
 
-
 static int vd6869_cut10_init_otp_NO_ECC(struct msm_sensor_ctrl_t *s_ctrl){
 	int i,rc = 0;
 	uint16_t read_data = 0;
@@ -5186,6 +5185,7 @@ int vd6869_read_fuseid_liteon(struct sensor_cfg_data *cdata,
 		}
 
         
+
         for (j=2; j>=0; --j) {
             for (i=0; i<VD6869_LITEON_OTP_SIZE; ++i) {
                 if(vd6869_s_ctrl.ews_enable){

@@ -23,7 +23,7 @@
  *
  * Dependencies: proto/bcmeth.h
  *
- * $Id: bcmevent.h 386716 2013-02-21 18:16:10Z $
+ * $Id: bcmevent.h 419132 2013-08-19 21:33:05Z $
  *
  */
 
@@ -155,6 +155,7 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_IF		54	
 #define WLC_E_P2P_DISC_LISTEN_COMPLETE	55	
 #define WLC_E_RSSI		56	
+#define WLC_E_PFN_BEST_BATCHING     57  
 #define WLC_E_PFN_SCAN_COMPLETE	57	
 #define WLC_E_EXTLOG_MSG	58
 #define WLC_E_ACTION_FRAME      59 	
@@ -180,7 +181,10 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_OVERLAY_REQ	79	
 #define WLC_E_CSA_COMPLETE_IND		80	
 #define WLC_E_EXCESS_PM_WAKE_EVENT	81	
+#define WLC_E_PFN_BSSID_NET_FOUND   82	
 #define WLC_E_PFN_SCAN_NONE		82	
+#define WLC_E_PFN_BSSID_NET_LOST    83  
+
 #define WLC_E_PFN_SCAN_ALLGONE		83	
 #define WLC_E_GTK_PLUMBED		84
 #define WLC_E_ASSOC_IND_NDIS		85	

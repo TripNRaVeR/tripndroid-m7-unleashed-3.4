@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 383841 2013-02-08 00:10:58Z $
+ * $Id: bcmsdh_sdmmc_linux.c 404103 2013-05-23 20:07:27Z $
  */
 
 #include <typedefs.h>
@@ -110,6 +110,9 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 {
 	int ret = 0;
 	static struct sdio_func sdio_func_0;
+
+	if (!gInstance)
+		return -EINVAL;
 
 	if (func) {
 		sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));

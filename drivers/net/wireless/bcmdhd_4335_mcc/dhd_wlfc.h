@@ -18,7 +18,7 @@
 *      Notwithstanding the above, under no circumstances may you combine this
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
-* $Id: dhd_wlfc.h 364470 2012-10-24 04:52:47Z $
+* $Id: dhd_wlfc.h 398418 2013-04-24 15:18:27Z $
 *
 */
 #ifndef __wlfc_host_driver_definitions_h__
@@ -280,10 +280,6 @@ int dhd_wlfc_init(dhd_pub_t *dhd);
 void dhd_wlfc_deinit(dhd_pub_t *dhd);
 int dhd_wlfc_parse_header_info(dhd_pub_t *dhd, void* pktbuf, int tlv_hdr_len,
 	uchar *reorder_info_buf, uint *reorder_info_len);
-
-#ifdef QMONITOR
-void dhd_wlfc_qmon_tx(void* state, void *pktbuf);
-#endif
 int dhd_wlfc_commit_packets(void* state, f_commitpkt_t fcommit,
 	void* commit_ctx, void *pktbuf);
 void dhd_wlfc_cleanup(dhd_pub_t *dhd, ifpkt_cb_t fn, int arg);

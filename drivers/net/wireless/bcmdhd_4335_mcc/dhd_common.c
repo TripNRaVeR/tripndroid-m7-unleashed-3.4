@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_common.c 395161 2013-04-05 13:19:38Z $
+ * $Id: dhd_common.c 419132 2013-08-19 21:33:05Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -36,6 +36,7 @@
 #include <dhd_ip.h>
 
 #include <proto/bcmevent.h>
+#include <proto/bcmip.h>
 
 #include <dhd_bus.h>
 #include <dhd_proto.h>
@@ -48,6 +49,9 @@
 #ifdef WLBTAMP
 #include <proto/bt_amp_hci.h>
 #include <dhd_bta.h>
+#endif
+#ifdef PNO_SUPPORT
+#include <dhd_pno.h>
 #endif
 #ifdef SET_RANDOM_MAC_SOFTAP
 #include <linux/random.h>
@@ -205,6 +209,7 @@ const bcm_iovar_t dhd_iovars[] = {
 	(WLHOST_REORDERDATA_MAXFLOWS + 1) },
 	{NULL, 0, 0, 0, 0 }
 };
+#define DHD_IOVAR_BUF_SIZE	128
 
 void
 dhd_common_init(osl_t *osh)
@@ -254,9 +259,10 @@ dhd_common_deinit(dhd_pub_t *dhd_pub, dhd_cmn_t *sa_cmn)
 	MFREE(osh, cmn, sizeof(dhd_cmn_t));
 }
 
+#ifdef CUSTOMER_HW_ONE
 void print_pkt_filter_list(dhd_pub_t *, struct bcmstrbuf *);
 void print_btc_mode(dhd_pub_t *, struct bcmstrbuf *);
-
+#endif
 static int
 dhd_dump(dhd_pub_t *dhdp, char *buf, int buflen)
 {
@@ -307,13 +313,14 @@ dhd_dump(dhd_pub_t *dhdp, char *buf, int buflen)
 	
 	dhd_bus_dump(dhdp, strbuf);
 
+#ifdef CUSTOMER_HW_ONE
     
     
     print_pkt_filter_list(dhdp, strbuf);
     
     print_btc_mode(dhdp, strbuf);
     
-
+#endif
 	return (!strbuf->size ? BCME_BUFTOOSHORT : 0);
 }
 
@@ -340,9 +347,16 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 	{
 
 		ret = dhd_prot_ioctl(dhd_pub, ifindex, ioc, buf, len);
-		if ((ret || ret == -ETIMEDOUT) && dhd_pub->up)
+		if ((ret) && (dhd_pub->up))
 			
 			dhd_os_check_hang(dhd_pub, ifindex, ret);
+
+		if (ret == -ETIMEDOUT && !dhd_pub->up) {
+			DHD_ERROR(("%s: 'resumed on timeout' error is "
+				"occurred before the interface does not"
+				" bring up\n", __FUNCTION__));
+			dhd_pub->busstate = DHD_BUS_DOWN;
+		}
 
 		dhd_os_proto_unblock(dhd_pub);
 
@@ -1172,7 +1186,7 @@ wl_show_host_event(wl_event_msg_t *event, void *event_data)
 	}
 
 	
-	if (datalen) {
+	if (DHD_BYTES_ON() && DHD_EVENT_ON() && datalen) {
 		buf = (uchar *) event_data;
 		DHD_EVENT((" data (%d) : ", datalen));
 		for (i = 0; i < datalen; i++)
@@ -1327,6 +1341,16 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		memcpy((void *)(&pvt_data->event.event_type), &temp,
 		       sizeof(pvt_data->event.event_type));
 	}
+	case WLC_E_PFN_NET_FOUND:
+	case WLC_E_PFN_NET_LOST:
+		break;
+	case WLC_E_PFN_BSSID_NET_FOUND:
+	case WLC_E_PFN_BSSID_NET_LOST:
+	case WLC_E_PFN_BEST_BATCHING:
+#ifdef PNO_SUPPORT
+		dhd_pno_event_handler(dhd_pub, event, (void *)event_data);
+#endif
+		break;
 		
 		
 	case WLC_E_LINK:
@@ -1638,6 +1662,19 @@ fail:
 	if (buf)
 		MFREE(dhd->osh, buf, BUF_SIZE);
 }
+
+void dhd_pktfilter_offload_delete(dhd_pub_t *dhd, int id)
+{
+	char iovbuf[32];
+	int ret;
+
+	bcm_mkiovar("pkt_filter_delete", (char *)&id, 4, iovbuf, sizeof(iovbuf));
+	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+	if (ret < 0) {
+		DHD_ERROR(("%s: Failed to delete filter ID:%d, ret=%d\n",
+			__FUNCTION__, id, ret));
+	}
+}
 #endif 
 
 #ifdef ARP_OFFLOAD_SUPPORT
@@ -1695,7 +1732,7 @@ dhd_aoe_arp_clr(dhd_pub_t *dhd, int idx)
 {
 	int ret = 0;
 	int iov_len = 0;
-	char iovbuf[128];
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
 
 	if (dhd == NULL) return;
 	if (dhd->arp_version == 1)
@@ -1711,7 +1748,7 @@ dhd_aoe_hostip_clr(dhd_pub_t *dhd, int idx)
 {
 	int ret = 0;
 	int iov_len = 0;
-	char iovbuf[128];
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
 
 	if (dhd == NULL) return;
 	if (dhd->arp_version == 1)
@@ -1726,7 +1763,7 @@ void
 dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr, int idx)
 {
 	int iov_len = 0;
-	char iovbuf[32];
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
 	int retcode;
 
 
@@ -1784,6 +1821,72 @@ dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen, int idx)
 	return 0;
 }
 #endif 
+int
+dhd_ndo_enable(dhd_pub_t * dhd, int ndo_enable)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int retcode;
+
+	if (dhd == NULL)
+		return -1;
+
+	bcm_mkiovar("ndoe", (char *)&ndo_enable, 4, iovbuf, sizeof(iovbuf));
+	retcode = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+	if (retcode)
+		DHD_ERROR(("%s: failed to enabe ndo to %d, retcode = %d\n",
+			__FUNCTION__, ndo_enable, retcode));
+	else
+		DHD_TRACE(("%s: successfully enabed ndo offload to %d\n",
+			__FUNCTION__, ndo_enable));
+
+	return retcode;
+}
+
+int
+dhd_ndo_add_ip(dhd_pub_t *dhd, char* ipv6addr, int idx)
+{
+	int iov_len = 0;
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int retcode;
+
+	if (dhd == NULL || ipv6addr == NULL)
+		return -1;
+
+	iov_len = bcm_mkiovar("nd_hostip", ipv6addr,
+		IPV6_ADDR_LEN, iovbuf, sizeof(iovbuf));
+	retcode = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, iov_len, TRUE, idx);
+
+	if (retcode)
+		DHD_ERROR(("%s: ndo ip addr add failed, retcode = %d\n",
+		__FUNCTION__, retcode));
+	else
+		DHD_ERROR(("%s: ndo ipaddr entry added \n",
+		__FUNCTION__));
+	return retcode;
+}
+int
+dhd_ndo_remove_ip(dhd_pub_t *dhd, int idx)
+{
+	int iov_len = 0;
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int retcode;
+
+	if (dhd == NULL)
+		return -1;
+
+	iov_len = bcm_mkiovar("nd_hostip_clear", (char *)NULL,
+		0, iovbuf, sizeof(iovbuf));
+	retcode = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, iov_len, TRUE, idx);
+
+	if (retcode)
+		DHD_ERROR(("%s: ndo ip addr remove failed, retcode = %d\n",
+		__FUNCTION__, retcode));
+	else
+		DHD_TRACE(("%s: ndo ipaddr entry removed \n",
+		__FUNCTION__));
+
+	return retcode;
+}
 
 void
 dhd_sendup_event_common(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data)
@@ -1881,22 +1984,22 @@ dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd)
 	bcn_li_dtim = dhd->suspend_bcn_li_dtim;
 
 	
-	if (dtim_assoc > LISTEN_INTERVAL) {
+	if (dtim_assoc > CUSTOM_LISTEN_INTERVAL) {
 		
 		bcn_li_dtim = 1;
 		DHD_ERROR(("%s DTIM=%d > Listen=%d : too big ...\n",
-			__FUNCTION__, dtim_assoc, LISTEN_INTERVAL));
+			__FUNCTION__, dtim_assoc, CUSTOM_LISTEN_INTERVAL));
 		goto exit;
 	}
 
-	if ((bcn_li_dtim * dtim_assoc) > LISTEN_INTERVAL) {
+	if ((bcn_li_dtim * dtim_assoc) > CUSTOM_LISTEN_INTERVAL) {
 		
-		bcn_li_dtim = (int)(LISTEN_INTERVAL / dtim_assoc);
+		bcn_li_dtim = (int)(CUSTOM_LISTEN_INTERVAL / dtim_assoc);
 		DHD_TRACE(("%s agjust dtim_skip as %d\n", __FUNCTION__, bcn_li_dtim));
 	}
 
 	DHD_ERROR(("%s beacon=%d bcn_li_dtim=%d DTIM=%d Listen=%d\n",
-		__FUNCTION__, ap_beacon, bcn_li_dtim, dtim_assoc, LISTEN_INTERVAL));
+		__FUNCTION__, ap_beacon, bcn_li_dtim, dtim_assoc, CUSTOM_LISTEN_INTERVAL));
 
 exit:
 	return bcn_li_dtim;
@@ -1914,6 +2017,7 @@ bool dhd_support_sta_mode(dhd_pub_t *dhd)
 }
 
 
+#ifdef CUSTOMER_HW_ONE
 #if defined(PNO_SUPPORT)
 int
 dhd_pno_clean(dhd_pub_t *dhd)
@@ -1944,52 +2048,8 @@ dhd_pno_clean(dhd_pub_t *dhd)
 
 	return ret;
 }
-
 int
-dhd_pno_enable(dhd_pub_t *dhd, int pfn_enabled)
-{
-	char iovbuf[128];
-	int ret = -1;
-
-	if ((!dhd) && ((pfn_enabled != 0) || (pfn_enabled != 1))) {
-		DHD_ERROR(("%s error exit\n", __FUNCTION__));
-#ifndef CUSTOMER_HW_ONE
-		return ret;
-#endif
-	}
-
-#ifndef WL_SCHED_SCAN
-	if (!dhd_support_sta_mode(dhd))
-		return (ret);
-
-	memset(iovbuf, 0, sizeof(iovbuf));
-
-	if ((pfn_enabled) && (dhd_is_associated(dhd, NULL, NULL) == TRUE)) {
-		DHD_ERROR(("%s pno is NOT enable : called in assoc mode , ignore\n", __FUNCTION__));
-		
-	}
-#endif 
-
-	
-	if ((ret = bcm_mkiovar("pfn", (char *)&pfn_enabled, 4, iovbuf, sizeof(iovbuf))) > 0) {
-		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR,
-			iovbuf, sizeof(iovbuf), TRUE, 0)) < 0) {
-			DHD_ERROR(("%s failed for error=%d\n", __FUNCTION__, ret));
-			return ret;
-		}
-		else {
-			dhd->pno_enable = pfn_enabled;
-			DHD_TRACE(("%s set pno as %s\n",
-				__FUNCTION__, dhd->pno_enable ? "Enable" : "Disable"));
-		}
-	}
-	else DHD_ERROR(("%s failed err=%d\n", __FUNCTION__, ret));
-
-	return ret;
-}
-
-int
-dhd_pno_set(dhd_pub_t *dhd, wlc_ssid_t* ssids_local, int nssid, ushort scan_fr,
+dhd_pno_set_ssid(dhd_pub_t *dhd, wlc_ssid_t* ssids_local, int nssid, ushort scan_fr,
 	int pno_repeat, int pno_freq_expo_max)
 {
 	int err = -1;
@@ -2101,19 +2161,8 @@ dhd_pno_set(dhd_pub_t *dhd, wlc_ssid_t* ssids_local, int nssid, ushort scan_fr,
 	
 	return err;
 }
-
-int
-dhd_pno_get_status(dhd_pub_t *dhd)
-{
-	int ret = -1;
-
-	if (!dhd)
-		return ret;
-	else
-		return (dhd->pno_enable);
-}
-
 #endif 
+#endif
 
 #if defined(KEEP_ALIVE)
 int dhd_keep_alive_onoff(dhd_pub_t *dhd)
@@ -2493,7 +2542,7 @@ int dhd_set_pktfilter(dhd_pub_t * dhd, int add, int id, int offset, char *mask, 
 	enable_parm.enable = htod32(1);
 	
 #if defined(APSTA_CONCURRENT) && defined(SOFTAP)
-		if (ap_cfg_running) {
+		if ( ap_net_dev ) {
 			printf("%s: apsta concurrent running, just add but don't enable rule id:%d\n", __FUNCTION__, pkt_id);
 			enable_parm.enable = htod32(0);
 		} else

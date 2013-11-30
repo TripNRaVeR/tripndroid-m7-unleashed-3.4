@@ -1844,6 +1844,9 @@ struct pm8xxx_gpio_init otg_pmic_gpio_pvt[] = {
 			 PM_GPIO_VIN_S4, PM_GPIO_STRENGTH_LOW,
 			 PM_GPIO_FUNC_NORMAL, 0, 0),
 };
+
+char *board_cid(void);
+
 void m7_add_usb_devices(void)
 {
 	int rc;
@@ -1874,6 +1877,13 @@ void m7_add_usb_devices(void)
 		android_usb_pdata.cdrom_lun = 0x1;
 	}
 	android_usb_pdata.serial_number = board_serialno();
+
+	if (!strncmp(board_cid(), "GOOGL", 5)) {
+		android_usb_pdata.product_id	= 0x060d;
+		android_usb_pdata.products[0].product_id =
+			android_usb_pdata.product_id;
+		android_usb_pdata.products[2].product_id = 0x0f26;
+	}
 
 	android_usb_pdata.usb_id_pin_gpio = PM8921_GPIO_PM_TO_SYS(USB1_HS_ID_GPIO);
 
@@ -3610,7 +3620,7 @@ static struct cm3629_platform_data cm36282_pdata_sk2 = {
 	.ps1_thd_set = 0x15,
 	.ps1_thd_no_cal = 0x90,
 	.ps1_thd_with_cal = 0xD,
-	.ps_th_add = 10,
+	.ps_th_add = 5,
 	.ps_calibration_rule = 1,
 	.ps_conf1_val = CM3629_PS_DR_1_40 | CM3629_PS_IT_1_6T |
 			CM3629_PS1_PERS_2,
@@ -3647,7 +3657,7 @@ static struct cm3629_platform_data cm36282_pdata_r8 = {
 	.ps1_thd_set = 0x15,
 	.ps1_thd_no_cal = 0x90,
 	.ps1_thd_with_cal = 0xD,
-	.ps_th_add = 10,
+	.ps_th_add = 5,
 	.ps_calibration_rule = 1,
 	.ps_conf1_val = CM3629_PS_DR_1_40 | CM3629_PS_IT_1_6T |
 			CM3629_PS1_PERS_2,
@@ -5348,10 +5358,6 @@ static void __init register_i2c_devices(void)
 				m7_i2c_devices[i].info =  himax_i2c_gsbi3_info;
 				m7_i2c_devices[i].len = ARRAY_SIZE(himax_i2c_gsbi3_info);
 #endif
-				i2c_register_board_info(APQ_8064_GSBI3_QUP_I2C_BUS_ID,
-						m7_i2c_devices[i].info,
-						m7_i2c_devices[i].len);
-				continue;
 			}
 			i2c_register_board_info(m7_i2c_devices[i].bus,
 						m7_i2c_devices[i].info,
@@ -5594,12 +5600,10 @@ static void __init m7_common_init(void)
 #ifdef CONFIG_SUPPORT_USB_SPEAKER
 	pm_qos_add_request(&pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 #endif
-#if 1
 	if (get_kernel_flag() & KERNEL_FLAG_PM_MONITOR) {
 		htc_monitor_init();
 		htc_pm_monitor_init();
 	}
-#endif
 }
 
 static void __init m7_allocate_memory_regions(void)

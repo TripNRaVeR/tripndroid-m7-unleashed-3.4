@@ -77,7 +77,7 @@ int32_t msm_camera_i2c_rxdata(struct msm_camera_i2c_client *dev_client,
 	rc = i2c_transfer(dev_client->client->adapter, msgs, 2);
 #endif
 	if (rc < 0)
-		pr_err("msm_camera_i2c_rxdata failed 0x%x\n", saddr);
+		S_I2C_DBG("msm_camera_i2c_rxdata failed 0x%x\n", saddr);
 	return rc;
 }
 
@@ -105,7 +105,7 @@ int32_t msm_camera_i2c_txdata(struct msm_camera_i2c_client *dev_client,
 #endif
 
 	if (rc < 0)
-		pr_err("msm_camera_i2c_txdata faild 0x%x\n", saddr);
+		S_I2C_DBG("msm_camera_i2c_txdata faild 0x%x\n", saddr);
 	return 0;
 }
 

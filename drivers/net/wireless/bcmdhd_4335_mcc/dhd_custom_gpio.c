@@ -20,7 +20,7 @@
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
 *
-* $Id: dhd_custom_gpio.c 389250 2013-03-06 02:05:03Z $
+* $Id: dhd_custom_gpio.c 417465 2013-08-09 11:47:27Z $
 */
 
 #include <typedefs.h>
@@ -334,7 +334,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"IS", "IS", 1},
 	{"IT", "IT", 1},
 	{"ID", "ID", 1},
-	{"JP", "JP", 8},
+	{"JP", "JP", 99},
 	{"KR", "KR", 24},
 	{"KW", "KW", 1},
 	{"LI", "LI", 1},
@@ -354,7 +354,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"SI", "SI", 1},
 	{"SK", "SK", 1},
 	{"TR", "TR", 7},
-	{"TW", "TW", 1},
+	{"TW", "TW", 2},
 #endif  
 #ifdef CUSTOMER_HW2
 	{"IR", "XZ", 11},	
@@ -366,12 +366,9 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"MH", "XZ", 11},	
 #endif
 #ifdef BCM4334_CHIP
-	{"US", "US", 0}
-#endif
-#ifdef BCM4334_CHIP
 	{"RU", "RU", 5},
 	{"SG", "SG", 4},
-	{"US", "US", 46}
+	{"US", "US", 109}
 #endif
 #ifdef BCM4330_CHIP
 	{"RU", "RU", 1},

@@ -22,10 +22,13 @@
 
 #ifdef CONFIG_ASYNC_FSYNC
 #define FLAG_ASYNC_FSYNC	0x1
+static DEFINE_MUTEX(afsync_lock);
+static LIST_HEAD(afsync_list);
 static struct workqueue_struct *fsync_workqueue = NULL;
 struct fsync_work {
 	struct work_struct work;
 	char pathname[256];
+	struct list_head list;
 };
 #endif
 static int __sync_filesystem(struct super_block *sb, int wait)
@@ -208,6 +211,9 @@ static void do_afsync_work(struct work_struct *work)
 		container_of(work, struct fsync_work, work);
 	int ret = -EBADF;
 	pr_debug("afsync: %s\n", fwork->pathname);
+	mutex_lock(&afsync_lock);
+	list_del(&fwork->list);
+	mutex_unlock(&afsync_lock);
 	ret = do_async_fsync(fwork->pathname);
 	if (ret != 0 && ret != -EBADF)
 		pr_info("afsync return %d\n", ret);
@@ -222,7 +228,7 @@ static int do_fsync(unsigned int fd, int datasync)
 	struct file *file;
 	int ret = -EBADF;
 #ifdef CONFIG_ASYNC_FSYNC
-	struct fsync_work *fwork;
+	struct fsync_work *fwork, *tmp;
 	
 #endif
 
@@ -243,10 +249,30 @@ static int do_fsync(unsigned int fd, int datasync)
 			if (IS_ERR(path))
 				goto no_async;
 
+			mutex_lock(&afsync_lock);
+			list_for_each_entry_safe(fwork, tmp, &afsync_list, list) {
+				if (!strcmp(fwork->pathname, path)) {
+					if (list_empty(&fwork->work.entry)) {
+						pr_debug("fsync(%s): work(%s) not in workqueue\n",
+								current->comm, path);
+						list_del_init(&fwork->list);
+						break;
+					}
+					
+					mutex_unlock(&afsync_lock);
+					fput(file);
+					return 0;
+				}
+			}
+			mutex_unlock(&afsync_lock);
+
 			fwork = kmalloc(sizeof(*fwork), GFP_KERNEL);
 			if (fwork) {
 				strncpy(fwork->pathname, path, sizeof(fwork->pathname) - 1);
 				INIT_WORK(&fwork->work, do_afsync_work);
+				mutex_lock(&afsync_lock);
+				list_add_tail(&fwork->list, &afsync_list);
+				mutex_unlock(&afsync_lock);
 				queue_work(fsync_workqueue, &fwork->work);
 				fput(file);
 				return 0;

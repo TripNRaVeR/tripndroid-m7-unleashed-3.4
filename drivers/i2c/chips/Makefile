@@ -21,6 +21,7 @@ obj-$(CONFIG_SENSORS_AKM8975)   += akm8975.o
 obj-$(CONFIG_SENSORS_AKM8975_PANA_GYRO)   += akm8975_pana_gyro.o
 obj-$(CONFIG_SENSORS_PANASONIC_GYRO)	+= ewtzmu2.o
 obj-$(CONFIG_SENSORS_AK8963)    += akm8963.o
+obj-$(CONFIG_SENSORS_AK8963_NST)    += akm8963_nst.o
 obj-$(CONFIG_SENSORS_R3GD20)    += r3gd20.o
 obj-$(CONFIG_SENSORS_LSM330_ACC)	+= lsm330_acc.o
 obj-$(CONFIG_SENSORS_LSM330_GYRO)	+= lsm330_gyr.o

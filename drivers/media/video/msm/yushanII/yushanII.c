@@ -29,7 +29,6 @@
 
 static int reload_firmware=1;
 static int first_init_2nd_cam = 1;
-static int yushanii_init_cam = 1;
 static uint32_t pInterruptId, pInterruptId2;
 struct yushanii_hist hist;
 
@@ -73,7 +72,6 @@ int YushanII_Get_reloadInfo(void){
 void YushanII_reload_firmware(void){
 	reload_firmware = 1;
 	first_init_2nd_cam = 1;
-	yushanii_init_cam = 1;
 }
 
 
@@ -577,7 +575,6 @@ void YushanII_init_backcam(struct msm_sensor_ctrl_t *sensor,int res){
 	#endif
 
 	YushanII_set_default_IQ(sensor);	
-	yushanii_init_cam = 0;
 }
 
 void YushanII_init_frontcam(struct msm_sensor_ctrl_t *sensor,int res){
@@ -632,7 +629,7 @@ void YushanII_init_frontcam(struct msm_sensor_ctrl_t *sensor,int res){
 		first_init_2nd_cam = 0;
 	}
 	YushanII_set_default_IQ2();
-	yushanii_init_cam = 0;
+
 }
 
 void YushanII_Init(struct msm_sensor_ctrl_t *sensor,int res)
@@ -974,9 +971,7 @@ static unsigned int YushanII_fops_poll(struct file *filp,
 
 int YushanII_got_INT0(void __user *argp){
 	struct yushanii_stats_event_ctrl event;
-	
 	static int got_short = 0;	
-    memset(&event,0,sizeof(struct yushanii_stats_event_ctrl));
 
 	Ilp0100_interruptReadStatus(&pInterruptId, INTR_PIN_0);
 	
@@ -984,22 +979,6 @@ int YushanII_got_INT0(void __user *argp){
 
 	Ilp0100_interruptClearStatus(pInterruptId, INTR_PIN_0);
 	enable_irq(yushanII_intr0);
-
-	
-	if (pInterruptId & START_OF_SHORTFRAME) {	
-		if (g_sensor->func_tbl->sensor_yushanII_ae_updated) {
-			if (g_sensor->func_tbl->sensor_yushanII_ae_updated() == 0) {
-				got_short++;
-				if (got_short >= 2) {
-					if (g_sensor->func_tbl->sensor_yushanII_active_hold)
-						g_sensor->func_tbl->sensor_yushanII_active_hold();
-					got_short = 0;
-				}
-			}
-		}
-	}
-	
-
 	switch(pInterruptId){
 		case SPI_COMMS_READY:
 			pr_info("[CAM]%s, SPI_COMMS_READY", __func__);
@@ -1012,6 +991,18 @@ int YushanII_got_INT0(void __user *argp){
 			break;
 		case MODE_CHANGE_COMPLETE:
 			pr_info("[CAM]%s, MODE_CHANGE_COMPLETE", __func__);
+			break;
+		case START_OF_SHORTFRAME:
+			if (g_sensor->func_tbl->sensor_yushanII_ae_updated) {
+				if (g_sensor->func_tbl->sensor_yushanII_ae_updated() == 0) {
+					got_short++;
+					if (got_short >= 2) {
+						if (g_sensor->func_tbl->sensor_yushanII_active_hold)
+							g_sensor->func_tbl->sensor_yushanII_active_hold();
+						got_short = 0;
+					}
+				}
+			}
 			break;
 	}
 	if(copy_to_user((void *)argp, &event, sizeof(struct yushanii_stats_event_ctrl))){
@@ -1125,11 +1116,6 @@ static int YushanII_set_defcor_level(void __user *argp) {
 		return -EFAULT;
 	}
 
-	if(yushanii_init_cam == 1) {
-		pr_info("[CAM] init cam is in progress, update defcor level later\n");
-		return -EBUSY;
-	}
-
 	switch(defcor_level) {
 	case DEFCOR_LEVEL_0:
 		DefcorConfig.Mode = OFF;
@@ -1196,7 +1182,6 @@ void YushanII_correct_StaturatedPixel(
 
 int YushanII_read_stats(void __user *argp,unsigned int cmd){
 	GlaceStatsData glace;
-	memset(&glace,0,sizeof(GlaceStatsData));
 	switch(cmd){
 		case YUSHANII_GET_LOGN_GLACE:
 			Ilp0100_readBackGlaceStatisticsLong(&glace_long);

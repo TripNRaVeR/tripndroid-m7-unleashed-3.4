@@ -28,8 +28,14 @@
 #include <linux/netdevice.h>
 #include <wldev_common.h>
 
+#ifdef WL_SDO
+#define WL_GENL
+#endif
 
 
+#ifdef WL_GENL
+#include <net/genetlink.h>
+#endif
 
 
 int wl_android_init(void);
@@ -48,4 +54,37 @@ int wifi_get_irq_number(unsigned long *irq_flags_ptr);
 int wifi_set_power(int on, unsigned long msec);
 int wifi_get_mac_addr(unsigned char *buf);
 void *wifi_get_country_code(char *ccode);
+#endif 
+
+#ifdef WL_GENL
+typedef struct bcm_event_hdr {
+	u16 event_type;
+	u16 len;
+} bcm_event_hdr_t;
+
+enum {
+	BCM_GENL_ATTR_UNSPEC,
+	BCM_GENL_ATTR_STRING,
+	BCM_GENL_ATTR_MSG,
+	__BCM_GENL_ATTR_MAX
+};
+#define BCM_GENL_ATTR_MAX (__BCM_GENL_ATTR_MAX - 1)
+
+enum {
+	BCM_GENL_CMD_UNSPEC,
+	BCM_GENL_CMD_MSG,
+	__BCM_GENL_CMD_MAX
+};
+#define BCM_GENL_CMD_MAX (__BCM_GENL_CMD_MAX - 1)
+
+enum {
+	BCM_E_UNSPEC,
+	BCM_E_SVC_FOUND,
+	BCM_E_DEV_FOUND,
+	BCM_E_DEV_LOST,
+	BCM_E_MAX
+};
+
+s32 wl_genl_send_msg(struct net_device *ndev, u32 event_type,
+	u8 *string, u16 len, u8 *hdr, u16 hdrlen);
 #endif 

@@ -65,6 +65,9 @@
 #include "msm_sdcc_dml.h"
 #include <mach/msm_rtb_disable.h> 
 
+#include <linux/fs.h>
+#include <mach/board.h>
+
 #define DRIVER_NAME "msm-sdcc"
 
 #define DBG(host, fmt, args...)	\
@@ -1418,14 +1421,10 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 			       data->mrq->cmd->opcode);
 			pr_err("%s: blksz %d, blocks %d\n", __func__,
 			       data->blksz, data->blocks);
-			msmsdcc_dump_sdcc_state(host);
-			if(is_sd_platform(host->plat)) {
-				host->mmc->caps &= ~MMC_CAP_UHS_SDR104;
-				pr_err("%s: %s: disable SDR104\n",
-					mmc_hostname(host->mmc), __func__);
+			if(is_sd_platform(host->plat))
 				msmsdcc_print_pin_info(host);
-			}
 			data->error = -EILSEQ;
+			msmsdcc_dump_sdcc_state(host);
 		}
 		
 		if (host->tuning_needed && !host->tuning_in_progress)
@@ -1754,12 +1753,8 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 		
 		if (host->tuning_needed)
 			host->tuning_done = false;
-		if(is_sd_platform(host->plat)) {
-			host->mmc->caps &= ~MMC_CAP_UHS_SDR104;
-			pr_err("%s: %s: disable SDR104\n",
-				mmc_hostname(host->mmc), __func__);
+		if(is_sd_platform(host->plat))
 			msmsdcc_print_pin_info(host);
-		}
 		cmd->error = -EILSEQ;
 	}
 
@@ -3212,14 +3207,7 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	unsigned long flags;
 	unsigned int clock;
 
-	if (is_sd_platform(host->plat)) {
-		if (host->curr.mrq && ios->clock == 0) {
-			pr_info("%s : %s, Request in progress, stop disable clk\n",
-				mmc_hostname(host->mmc), __func__);
-			WARN_ON(1);
-			return ;
-		}
-	}
+
 
 	mutex_lock(&host->clk_mutex);
 	DBG(host, "ios->clock = %u\n", ios->clock);
@@ -4390,9 +4378,6 @@ msmsdcc_platform_status_irq(int irq, void *dev_id)
 	struct msmsdcc_host *host = dev_id;
 
 	pr_debug("%s: %d\n", __func__, irq);
-	if (host->mmc->caps & (MMC_CAP_SET_XPC_330 | MMC_CAP_SET_XPC_300 |
-	    MMC_CAP_SET_XPC_180))
-		host->mmc->caps |= MMC_CAP_UHS_SDR104;
 	msmsdcc_check_status((unsigned long) host);
 	return IRQ_HANDLED;
 }
@@ -5353,6 +5338,71 @@ static int msmsdcc_proc_speed_class(char *page, char **start, off_t off,
 	return sprintf(page, "%d", host->card->speed_class);
 }
 
+#define HTC_SECURE_MESSAGE_LEN	    128
+static int msmsdcc_proc_cam_control_read(char *page, char **start, off_t off,
+		int count, int *eof, void *data)
+{
+	mm_segment_t oldfs;
+	struct file *filp = NULL;
+	char mbuffer[HTC_SECURE_MESSAGE_LEN];
+	ssize_t nread;
+	char filename[32] = "";
+	int pnum = get_partition_num_by_name("control");
+
+	if (pnum < 0) {
+		pr_info("unknown partition number for misc partition\n");
+		return count;
+	}
+
+	sprintf(filename, "/dev/block/mmcblk0p%d", pnum);
+	filp = filp_open(filename, O_RDWR, 0);
+	if (IS_ERR(filp)) {
+		pr_info("unable to open file: %s\n", filename);
+		return PTR_ERR(filp);
+	}
+
+	filp->f_pos = 8;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	nread = vfs_read(filp, mbuffer, HTC_SECURE_MESSAGE_LEN, &filp->f_pos);
+	set_fs(get_ds());
+
+	return sprintf(page, "%s", mbuffer);
+}
+
+static int msmsdcc_proc_cam_control_set(struct file *file, const char __user *buffer,
+		unsigned long count, void *dat)
+{
+	mm_segment_t oldfs;
+	char filename[32] = "";
+	int pnum = get_partition_num_by_name("control");
+	struct file *filp = NULL;
+	ssize_t nread;
+
+	if (pnum < 0) {
+		pr_info("unknown partition number for misc partition\n");
+		return count;
+	}
+
+	sprintf(filename, "/dev/block/mmcblk0p%d", pnum);
+
+	filp = filp_open(filename, O_RDWR, 0);
+	if (IS_ERR(filp)) {
+		pr_info("unable to open file: %s\n", filename);
+		return PTR_ERR(filp);
+	}
+
+	filp->f_pos = 8;
+	oldfs = get_fs();
+	set_fs(get_ds());
+	nread = vfs_write(filp, buffer, count, &filp->f_pos);
+	set_fs(oldfs);
+
+	if (filp)
+		filp_close(filp, NULL);
+	return count;
+}
+
 static int msmsdcc_proc_bkops_show(char *page, char **start, off_t off,
 		int count, int *eof, void *data)
 {
@@ -5932,6 +5982,16 @@ msmsdcc_probe(struct platform_device *pdev)
 		} else
 			pr_warning("%s: Failed to create emmc_bkops entry\n",
 				mmc_hostname(host->mmc));
+
+		host->cam_control = create_proc_entry("write_to_control", 0666, NULL);
+		if (host->cam_control) {
+			host->cam_control->read_proc = msmsdcc_proc_cam_control_read;
+			host->cam_control->write_proc = msmsdcc_proc_cam_control_set;
+			
+			host->cam_control->data = (void *) host->mmc;
+		} else
+			pr_warning("%s: Failed to create emmc_bkops entry\n",
+					mmc_hostname(host->mmc));
 	}
 	if(is_sd_platform(host->plat)) {
 		host->speed_class = create_proc_entry("sd_speed_class", 0444, NULL);

@@ -421,6 +421,7 @@ struct msmsdcc_host {
 	struct proc_dir_entry *burst_proc;
 	struct proc_dir_entry *bkops_proc;
 	struct proc_dir_entry *speed_class;
+	struct proc_dir_entry *cam_control;
 
 #ifdef CONFIG_WIFI_MMC
     bool is_runtime_resumed;

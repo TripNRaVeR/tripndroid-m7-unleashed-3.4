@@ -29,7 +29,7 @@
 
 #define cls_dev_to_mmc_host(d)	container_of(d, struct mmc_host, class_dev)
 
-static void mmc_stats_timer_hdlr(unsigned long data);
+extern struct workqueue_struct *stats_workqueue;
 static void mmc_host_classdev_release(struct device *dev)
 {
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
@@ -261,10 +261,10 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 		kasprintf(GFP_KERNEL, "%s_detect", mmc_hostname(host)));
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 	INIT_DELAYED_WORK(&host->remove, mmc_remove_sd_card);
+	INIT_DELAYED_WORK(&host->stats_work, mmc_stats);
 #ifdef CONFIG_PM
 	host->pm_notify.notifier_call = mmc_pm_notify;
 #endif
-	setup_timer(&host->stats_timer, mmc_stats_timer_hdlr, (unsigned long)host);
 
 	host->max_segs = 1;
 	host->max_seg_size = PAGE_CACHE_SIZE;
@@ -282,7 +282,6 @@ free:
 
 EXPORT_SYMBOL(mmc_alloc_host);
 
-#define MMC_STATS_INFO_INTERVAL 5000 
 static ssize_t
 show_perf(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -323,10 +322,11 @@ set_perf(struct device *dev, struct device_attribute *attr,
 	if (!value) {
 		memset(&host->perf, 0, sizeof(host->perf));
 		host->perf_enable = false;
-	} else {
+	} else if (!host->perf_enable) {
 		host->perf_enable = true;
-		mod_timer(&host->stats_timer, (jiffies +
-			msecs_to_jiffies(MMC_STATS_INFO_INTERVAL)));
+		if (stats_workqueue)
+			queue_delayed_work(stats_workqueue, &host->stats_work,
+				msecs_to_jiffies(MMC_STATS_INTERVAL));
 	}
 	spin_unlock_irqrestore(&host->lock, flags);
 
@@ -335,64 +335,6 @@ set_perf(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(perf, S_IRUGO | S_IWUSR,
 		show_perf, set_perf);
-
-#define K(x) ((x) << (PAGE_SHIFT - 10))
-static void mmc_stats_timer_hdlr(unsigned long data)
-{
-	struct mmc_host *host = (struct mmc_host *)data;
-	unsigned long rtime, wtime;
-	unsigned long rbytes, wbytes, rcnt, wcnt;
-	unsigned long wperf = 0, rperf = 0;
-	unsigned long flags;
-	u64 val;
-
-	if (!host || !host->perf_enable)
-		return;
-
-	spin_lock_irqsave(&host->lock, flags);
-
-	rbytes = host->perf.rbytes_drv;
-	wbytes = host->perf.wbytes_drv;
-	rcnt = host->perf.rcount;
-	wcnt = host->perf.wcount;
-	rtime = (unsigned long)ktime_to_us(host->perf.rtime_drv);
-	wtime = (unsigned long)ktime_to_us(host->perf.wtime_drv);
-
-	host->perf.rbytes_drv = host->perf.wbytes_drv = 0;
-	host->perf.rcount = host->perf.wcount = 0;
-	host->perf.rtime_drv = ktime_set(0, 0);
-	host->perf.wtime_drv = ktime_set(0, 0);
-
-	spin_unlock_irqrestore(&host->lock, flags);
-
-	if (wtime) {
-		val = ((u64)wbytes / 1024) * 1000000;
-		do_div(val, wtime);
-		wperf = (unsigned long)val;
-	}
-	if (rtime) {
-		val = ((u64)rbytes / 1024) * 1000000;
-		do_div(val, rtime);
-		rperf = (unsigned long)val;
-	}
-
-	
-	wtime /= 1000;
-	rtime /= 1000;
-	if (wperf && wtime > 500) {
-		pr_info("%s Statistics: dirty %luKB, writeback %luKB\n", mmc_hostname(host),
-				K(global_page_state(NR_FILE_DIRTY)), K(global_page_state(NR_WRITEBACK)));
-		pr_info("%s Statistics: write %lu KB in %lu ms, perf %lu KB/s, rq %lu\n",
-				mmc_hostname(host), wbytes / 1024, wtime, wperf, wcnt);
-	}
-	if (rperf && rtime > 500)
-		pr_info("%s Statistics: read %lu KB in %lu ms, perf %lu KB/s, rq %lu\n",
-			mmc_hostname(host), rbytes / 1024, rtime, rperf, rcnt);
-
-	mod_timer(&host->stats_timer, (jiffies +
-		  msecs_to_jiffies(MMC_STATS_INFO_INTERVAL)));
-	return;
-}
 
 static ssize_t
 show_burst(struct device *dev, struct device_attribute *attr, char *buf)
@@ -425,9 +367,36 @@ set_burst(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR(burst, S_IRUGO | S_IWUSR | S_IWGRP,
 		show_burst, set_burst);
 
+
+static ssize_t
+show_debug(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *host = dev_get_drvdata(dev);
+	if (!host)
+		return 0;
+	return sprintf(buf, "%d", host->debug_mask);
+}
+
+static ssize_t
+set_debug(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int value;
+	struct mmc_host *host = dev_get_drvdata(dev);
+
+	sscanf(buf, "%d", &value);
+	host->debug_mask = value;
+	pr_info("%s: set debug 0x%x\n", mmc_hostname(host), value);
+
+	return count;
+}
+static DEVICE_ATTR(debug, S_IRUGO | S_IWUSR,
+		show_debug, set_debug);
+
 static struct attribute *dev_attrs[] = {
 	&dev_attr_perf.attr,
 	&dev_attr_burst.attr,
+	&dev_attr_debug.attr,
 	NULL,
 };
 static struct attribute_group dev_attr_grp = {

@@ -90,13 +90,6 @@ int __init parse_tag_hwid(const struct tag *tags)
 }
 __tagtable(ATAG_HWID, parse_tag_hwid);
 
-static unsigned g_htc_skuid;
-unsigned htc_get_skuid(void)
-{
-        return g_htc_skuid;
-}
-EXPORT_SYMBOL(htc_get_skuid);
-
 #define ATAG_SKUID 0x4d534D73
 int __init parse_tag_skuid(const struct tag *tags)
 {
@@ -111,10 +104,8 @@ int __init parse_tag_skuid(const struct tag *tags)
 		}
 	}
 
-	if (find){
+	if (find)
 		skuid = t->u.revision.rev;
-		g_htc_skuid = skuid;
-	}
 	printk(KERN_DEBUG "parse_tag_skuid: hwid = 0x%x\n", skuid);
 	return skuid;
 }
@@ -703,20 +694,23 @@ int __init board_wifi_setting(char *s)
 }
 __setup("wificd=", board_wifi_setting);
 
-char model_id[32];
-char *board_get_mid(void)
-{
-	return model_id;
-}
-static int __init board_set_mid(char *mid)
-{
-	strncpy(model_id, mid, sizeof(model_id));
-	return 1;
-}
-__setup("androidboot.mid=", board_set_mid);
-
 int get_wifi_setting(void)
 {
 	return wifi_setting;
 }
 EXPORT_SYMBOL(get_wifi_setting);
+
+static char android_cid[16] = {0};
+static int __init board_cid_check(char *cid)
+{
+	pr_info("%s: set cid no to %s\r\n", __func__, cid);
+	strncpy(android_cid, cid, sizeof(android_cid)/sizeof(android_cid[0]) - 1);
+	return 1;
+}
+__setup("androidboot.cid=", board_cid_check);
+
+char *board_cid(void)
+{
+	return android_cid;
+}
+EXPORT_SYMBOL(board_cid);

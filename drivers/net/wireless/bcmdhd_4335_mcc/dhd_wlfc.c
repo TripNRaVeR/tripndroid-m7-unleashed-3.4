@@ -21,11 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- *      Unless you and Broadcom execute a separate written software license
- * agreement governing use of this software, this software is licensed to you
- * under the terms of the GNU General Publi
- *
- * $Id: dhd_wlfc.c 395161 2013-04-05 13:19:38Z $
+ * $Id: dhd_wlfc.c 412994 2013-07-17 12:38:03Z $
  *
  */
 
@@ -1062,6 +1058,10 @@ _dhd_wlfc_enque_delayq(athost_wl_status_info_t* ctx, void* pktbuf, int prec)
 			ctx->stats.delayq_full_error++;
 			return BCME_ERROR;
 		}
+
+#ifdef QMONITOR
+		dhd_qmon_tx(&entry->qmon);
+#endif
 		_dhd_wlfc_traffic_pending_check(ctx, entry, prec);
 
 	}
@@ -1216,22 +1216,6 @@ _dhd_wlfc_handle_packet_commit(athost_wl_status_info_t* ctx, int ac,
 
 	return rc;
 }
-
-
-#ifdef QMONITOR
-void
-dhd_wlfc_qmon_tx(void* state, void *pktbuf)
-{
-	athost_wl_status_info_t* ctx = (athost_wl_status_info_t*)state;
-
-	if (!ctx) {
-		wlfc_mac_descriptor_t* entry =  _dhd_wlfc_find_table_entry(ctx, pktbuf);
-		if (entry)
-			dhd_qmon_tx(&entry->qmon);
-	}
-}
-#endif 
-
 
 int
 dhd_wlfc_commit_packets(void* state, f_commitpkt_t fcommit, void* commit_ctx, void *pktbuf)
@@ -2169,6 +2153,7 @@ dhd_wlfc_enable(dhd_pub_t *dhd)
 	if (wlfc->hanger == NULL) {
 		MFREE(dhd->osh, dhd->wlfc_state, sizeof(athost_wl_status_info_t));
 		dhd->wlfc_state = NULL;
+		DHD_ERROR(("Failed to malloc dhd->wlfc_state\n"));
 		return BCME_NOMEM;
 	}
 
@@ -2186,9 +2171,6 @@ dhd_wlfc_enable(dhd_pub_t *dhd)
 
 	wlfc->allow_credit_borrow = TRUE;
 	wlfc->borrow_defer_timestamp = 0;
-
-	if (dhd->plat_enable)
-		dhd->plat_enable((void *)dhd);
 
 	return BCME_OK;
 }
@@ -2297,8 +2279,6 @@ dhd_wlfc_deinit(dhd_pub_t *dhd)
 	dhd->wlfc_state = NULL;
 	dhd_os_wlfc_unblock(dhd);
 
-	if (dhd->plat_deinit)
-		dhd->plat_deinit((void *)dhd);
 	return;
 }
 #endif 

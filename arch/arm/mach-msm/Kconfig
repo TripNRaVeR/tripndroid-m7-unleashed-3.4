@@ -2558,6 +2558,7 @@ config MSM_OCMEM
 
 config MSM_RTB
 	bool "Register tracing"
+	depends on (!METRICO_TP || METRICO_TP!=y)
 	help
 	  Add support for logging different events to a small uncached
 	  region. This is designed to aid in debugging reset cases where the
@@ -2726,6 +2727,12 @@ config MSM_HSIC_SYSMON
 	  Add support for bridging with the system monitor interface of MDM
 	  over HSIC. This driver allows the local system monitor to
 	  communicate with the remote system monitor interface.
+
+config MSM_HSIC_SYSMON_TTY_DEV
+	tristate "MSM HSIC system monitor TTY device"
+	depends on USB && MSM_HSIC_SYSMON
+	help
+	 Add support for using SYSMON interface for specific purpose
 
 config MSM_HSIC_SYSMON_TEST
 	tristate "MSM HSIC system monitor bridge test"
