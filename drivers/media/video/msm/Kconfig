@@ -31,20 +31,12 @@ config MT9D112
 	default y
 	---help---
 	  MICRON 2M YUV Sensor
+
 config IMX074
 	bool "Sensor IMX074 (BAYER 13.5M)"
 	depends on MSM_CAMERA
 	---help---
 	SONY 13.5 MP Bayer Sensor
-
-config S5K3H2YX
-	bool "Sensor s5k3h2yx (Samsung 8M)"
-	depends on MSM_CAMERA
-	default n
-	---help---
-	  Support for S5K3H2YX samsung sensor driver.
-	  It is a Bayer 8MP sensor with auto focus and it supports
-	  two mipi lanes.
 
 config S5K6A1GX
 	bool "Sensor s5k6a1gx (Samsung 1.3M)"
@@ -60,6 +52,13 @@ config AR0260
 	default n
 	---help---
 	  Support for AR0260 sensor driver.
+
+config AS0260
+	bool "Sensor as0260"
+	depends on MSM_CAMERA
+	default n
+	---help---
+	  Support for AS0260 sensor driver.
 
 config OV2722
 	bool "Sensor ov2722"
@@ -295,27 +294,6 @@ config QUP_EXCLUSIVE_TO_CAMERA
 	  is disabled, the lvs1 voltage is enabled
 	  by QUP in the board file as QUP is used by
 	  applications other than camera.
-
-config S5K3L1YX
-	bool "Sensor S5K3L1YX (BAYER 12M)"
-	depends on MSM_CAMERA
-	---help---
-		Samsung 12 MP Bayer Sensor with auto focus, uses
-		4 mipi lanes, preview config = 1984 * 1508 at 30 fps,
-		snapshot config = 4000 * 3000 at 20 fps,
-		hfr video at 60, 90 and 120 fps.
-
-config IMX091
-	bool "Sensor IMX091 (BAYER 13M)"
-	depends on MSM_CAMERA
-	---help---
-	SONY 13 MP Bayer Sensor
-
-config IMX175
-	bool "Sensor IMX175 (BAYER 8M)"
-	depends on MSM_CAMERA
-	---help---
-	SONY 8 MP Bayer Sensor
 
 config IMX135
 	bool "Sensor IMX135 (BAYER 13M)"

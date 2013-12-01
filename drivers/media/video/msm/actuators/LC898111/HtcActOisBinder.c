@@ -445,11 +445,14 @@ int32_t HtcActOisBinder_mappingTbl_i2c_write(int startup_mode, struct sensor_act
 
 		cur_cmp_angle = 600;
 		if (cur_exp_time >= (1000/24)) {
-			cur_ois_level = 5;
+			cur_ois_level = 6;
+			cur_cmp_angle = 700;
 		} else if (cur_exp_time >= (1000/48)) {
-			cur_ois_level = 4;
+			cur_ois_level = 5;
+			cur_cmp_angle = 600;
 		} else if (cur_exp_time >= (1000/83)) {
-			cur_ois_level = 3;
+			cur_ois_level = 4;
+			cur_cmp_angle = 600;
 		} else {
 			ois_off = 1;
 		}
@@ -457,25 +460,25 @@ int32_t HtcActOisBinder_mappingTbl_i2c_write(int startup_mode, struct sensor_act
 		if (cur_zoom_level >= 45) {
 
 			if (cur_exp_time >= (1000/24))
-				cur_ois_level = 5;
+				cur_ois_level = 6;
 			else
-				cur_ois_level = 4;
+				cur_ois_level = 5;
 
 			ois_off = 0;
 		} else if (cur_zoom_level >= 30) {
 
 			if (cur_exp_time >= (1000/24))
-				cur_ois_level = 5;
+				cur_ois_level = 6;
 			else
-				cur_ois_level = 4;
+				cur_ois_level = 5;
 
 			ois_off = 0;
 		} else if (cur_zoom_level >= 15) {
 
 			if (cur_exp_time >= (1000/24))
-				cur_ois_level = 5;
+				cur_ois_level = 6;
 			else
-				cur_ois_level = 4;
+				cur_ois_level = 5;
 
 			ois_off = 0;
 		}
@@ -483,38 +486,46 @@ int32_t HtcActOisBinder_mappingTbl_i2c_write(int startup_mode, struct sensor_act
 	} else if (cur_cam_mode == CAM_MODE_VIDEO_RECORDING) {
 
 		if (cur_exp_time >= (1000/24)) {
-			cur_ois_level= 5;
+			cur_ois_level= 6;
 		} else if (cur_exp_time >= (1000/48)) {
-			cur_ois_level= 4;
+			cur_ois_level= 5;
 		} else if (cur_exp_time >= (1000/83)) {
-			cur_ois_level= 4;
+			cur_ois_level= 5;
 		} else {
-			cur_ois_level= 4;
+			cur_ois_level= 5;
 		}
 		cur_cmp_angle = 600;
 
 		if (cur_zoom_level >= 45) {
 			if (cur_exp_time >= (1000/24)) {
-				cur_ois_level = 5;
+				cur_ois_level = 6;
+				cur_cmp_angle = 700;
 			} else if (cur_exp_time >= (1000/48)) {
-				cur_ois_level = 4;
+				cur_ois_level = 5;
+				cur_cmp_angle = 700;
 			} else if (cur_exp_time >= (1000/83)) {
-				cur_ois_level = 4;
+				cur_ois_level = 5;
+				cur_cmp_angle = 700;
 			} else {
-				cur_ois_level = 4;
+				cur_ois_level = 5;
+				cur_cmp_angle = 600;
 			}
 		} else if (cur_zoom_level >= 30) {
 			if (cur_exp_time >= (1000/24)) {
-				cur_ois_level = 5;
+				cur_ois_level = 6;
+				cur_cmp_angle = 700;
 			} else {
-				cur_ois_level = 4;
+				cur_ois_level = 5;
+				cur_cmp_angle = 600;
 			}
 		} else if (cur_zoom_level >= 15) {
 
 			if (cur_exp_time >= (1000/24)) {
-				cur_ois_level = 5;
+				cur_ois_level = 6;
+				cur_cmp_angle = 700;
 			} else {
-				cur_ois_level = 4;
+				cur_ois_level = 5;
+				cur_cmp_angle = 600;
 			}
 		}
 
