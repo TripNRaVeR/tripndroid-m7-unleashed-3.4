@@ -2084,12 +2084,12 @@ static int htc_headset_mgr_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_h2w_switch_dev_register;
 
-	hi->sdev_usb_audio.name = "usb_audio";
+	/* hi->sdev_usb_audio.name = "usb_audio";
 	hi->sdev_usb_audio.print_name = usb_audio_print_name;
 
 	ret = switch_dev_register(&hi->sdev_usb_audio);
 	if (ret < 0)
-		goto err_usb_audio_switch_dev_register;
+		goto err_usb_audio_switch_dev_register; */
 
 	detect_wq = create_workqueue("detect");
 	if (detect_wq == NULL) {
