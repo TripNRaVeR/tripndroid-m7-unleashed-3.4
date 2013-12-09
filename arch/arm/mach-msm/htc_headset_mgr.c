@@ -314,11 +314,6 @@ static ssize_t h2w_print_name(struct switch_dev *sdev, char *buf)
 	return sprintf(buf, "Headset\n");
 }
 
-static ssize_t usb_audio_print_name(struct switch_dev *sdev, char *buf)
-{
-	return sprintf(buf, "usb_audio\n");
-}
-
 static void get_key_name(int keycode, char *buf)
 {
 	switch (keycode) {
@@ -2174,9 +2169,6 @@ err_create_button_work_queue:
 
 err_create_detect_work_queue:
 	switch_dev_unregister(&hi->sdev_usb_audio);
-
-err_usb_audio_switch_dev_register:
-	switch_dev_unregister(&hi->sdev_h2w);
 
 err_h2w_switch_dev_register:
 	mutex_destroy(&hi->mutex_lock);
