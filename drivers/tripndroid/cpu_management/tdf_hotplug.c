@@ -332,22 +332,25 @@ static void tripndroid_hp_early_suspend(struct early_suspend *handler)
 
 	cancel_delayed_work_sync(&tripndroid_hp_w);
 
-	if (!tdf_suspend_state) {
-	tdf_suspend_state = 1;
-	}
-
 	for (i = 1; i < tripndroid_hp_config.max_cpus; i++) {
 		if (cpu_online(i))
 			tdf_cpu_down(i);
 
 	per_cpu(tripndroid_hp_cpudata, i).online = false;
 	}
+
+	tdf_suspend_state = 1;
 }
 
 static void tripndroid_hp_late_resume(struct early_suspend *handler)
 {
 	int i = nr_cpu_ids;
 	int max_cpus;
+
+	if (!tdf_suspend_state)
+		return;
+
+	tdf_suspend_state = 0;
 
 	if (powersaving_active == 1) {
 	max_cpus = 2;
@@ -356,11 +359,8 @@ static void tripndroid_hp_late_resume(struct early_suspend *handler)
 	max_cpus = tripndroid_hp_config.max_cpus;
 	}
 
-	if (tdf_suspend_state) {
-	tdf_suspend_state = 0;
-	}
-
 	was_paused = true;
+	schedule_delayed_work_on(0, &tripndroid_hp_w, msecs_to_jiffies(0));
 
 	for (i = 1; i < max_cpus; i++) {
 		if (!cpu_online(i))
@@ -368,8 +368,6 @@ static void tripndroid_hp_late_resume(struct early_suspend *handler)
 
 	per_cpu(tripndroid_hp_cpudata, i).online = true;
 	}
-
-	schedule_delayed_work_on(0, &tripndroid_hp_w, 0);
 }
 
 static struct early_suspend tripndroid_hp_early_suspend_struct_driver = {
