@@ -54,6 +54,7 @@ struct tripndroid_hp_cpudata_t {
 static DEFINE_PER_CPU(struct tripndroid_hp_cpudata_t, tripndroid_hp_cpudata);
 
 static DEFINE_MUTEX(tripndroid_hp_cpu_lock);
+static DEFINE_MUTEX(tripndroid_hp_suspend_lock);
 
 struct delayed_work tripndroid_hp_w;
 
@@ -330,7 +331,9 @@ static void tripndroid_hp_early_suspend(struct early_suspend *handler)
 {
 	int i = nr_cpu_ids;
 
+	mutex_lock(&tripndroid_hp_suspend_lock);
 	cancel_delayed_work_sync(&tripndroid_hp_w);
+	mutex_unlock(&tripndroid_hp_suspend_lock);
 
 	for (i = 1; i < tripndroid_hp_config.max_cpus; i++) {
 		if (cpu_online(i))
@@ -360,7 +363,10 @@ static void tripndroid_hp_late_resume(struct early_suspend *handler)
 	}
 
 	was_paused = true;
+
+	mutex_lock(&tripndroid_hp_suspend_lock);
 	schedule_delayed_work_on(0, &tripndroid_hp_w, msecs_to_jiffies(0));
+	mutex_unlock(&tripndroid_hp_suspend_lock);
 
 	for (i = 1; i < max_cpus; i++) {
 		if (!cpu_online(i))
