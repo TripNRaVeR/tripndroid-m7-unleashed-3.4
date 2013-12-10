@@ -109,19 +109,15 @@ static int get_slowest_cpu(void)
         unsigned long rate, slow_rate = 0;
 
         for (i = 0; i < tripndroid_hp_config.max_cpus; i++) {
-
-                if (!cpu_online(i))
+		if (!cpu_online(i))
 			continue;
-
 		rate = cpu_getspeed(i);
-
 		if (slow_rate == 0) {
+			cpu = i;
 			slow_rate = rate;
+			continue;
 		}
 		if ((rate <= slow_rate) && (slow_rate != 0)) {
-			if (i == 0)
-				continue;
-
 			cpu = i;
 			slow_rate = rate;
 		}
