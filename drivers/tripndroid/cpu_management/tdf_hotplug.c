@@ -62,17 +62,20 @@ static struct tripndroid_hp {
 	unsigned int sample_ms;
 	unsigned int pause;
 	unsigned int delay;
+	unsigned int idle_freq;
         unsigned int max_cpus;
         unsigned int min_cpus;
 } tripndroid_hp_config = {
 	.sample_ms = TRIPNDROID_HP_SAMPLE_MS,
 	.pause = TRIPNDROID_HP_PAUSE,
 	.delay = TRIPNDROID_HP_DELAY,
+	.idle_freq = TDF_FREQ_IDLE,
         .max_cpus = CONFIG_NR_CPUS,
         .min_cpus = 1,
 };
 
 unsigned int state = TRIPNDROID_HP_IDLE;
+unsigned int slowest_cpu_rate;
 
 extern unsigned int powersaving_active;
 extern unsigned int tdf_suspend_state;
@@ -189,6 +192,7 @@ static int mp_decision(void)
 	int index;
 	int current_run;
 	int req_cpus;
+	int slowest_cpu;
 
 	static cputime64_t total_time = 0;
 	static cputime64_t last_time;
@@ -219,16 +223,28 @@ static int mp_decision(void)
 	pr_info(" [TDF] req_cpus = %u", req_cpus);
 #endif
 
+	slowest_cpu = get_slowest_cpu();
+	slowest_cpu_rate = cpu_getspeed(slowest_cpu);
+#ifdef TDF_DEBUG
+	pr_info(" [TDF] slowest_cpu_rate = %u", slowest_cpu_rate);
+#endif
+
 	if (online_cpus) {
 		index = (online_cpus - 1) * 2;
 		if ((online_cpus < tripndroid_hp_config.max_cpus) && (current_run >= NwNs_Threshold[index])) {
 			if ((total_time >= TwTs_Threshold[index]) && (online_cpus < req_cpus)) {
 					next_state = TRIPNDROID_HP_UP;
 			}
+			if (slowest_cpu_rate <= tripndroid_hp_config.idle_freq) {
+					next_state = TRIPNDROID_HP_IDLE;
+			}
 		}
 		else if ((online_cpus > 1) && (current_run <= NwNs_Threshold[index+1])) {
 			if ((total_time >= TwTs_Threshold[index+1]) && (online_cpus > req_cpus)) {
 					next_state = TRIPNDROID_HP_DOWN;
+			}
+			if (slowest_cpu_rate > tripndroid_hp_config.idle_freq) {
+					next_state = TRIPNDROID_HP_IDLE;
 			}
 		}
 		else {
