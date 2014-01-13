@@ -256,10 +256,10 @@ static void tripndroid_hp_wt(struct work_struct *work)
 {
 	unsigned int cpu = nr_cpu_ids;
 
-	if (ktime_to_ms(ktime_get()) <= tripndroid_hp_config.sample_ms)
+	if (tdf_pause_timer >= ktime_to_ms(ktime_get()))
 		goto out;
 
-	if (tdf_pause_timer >= ktime_to_ms(ktime_get()))
+	if (ktime_to_ms(ktime_get()) <= tripndroid_hp_config.sample_ms)
 		goto out;
 
         if (tdf_suspend_state == 1)
