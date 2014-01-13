@@ -200,9 +200,6 @@ static int mp_decision(void)
 
 	current_time = ktime_to_ms(ktime_get());
 
-	if (current_time <= tripndroid_hp_config.sample_ms)
-		return TRIPNDROID_HP_IDLE;
-
 	if (initial) {
 		initial = false;
 	}
@@ -257,9 +254,6 @@ static void tripndroid_hp_wt(struct work_struct *work)
 	unsigned int cpu = nr_cpu_ids;
 
 	if (tdf_pause_timer >= ktime_to_ms(ktime_get()))
-		goto out;
-
-	if (ktime_to_ms(ktime_get()) <= tripndroid_hp_config.sample_ms)
 		goto out;
 
         if (tdf_suspend_state == 1)
